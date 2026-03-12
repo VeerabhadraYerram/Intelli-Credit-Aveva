@@ -40,8 +40,12 @@ export default function Optimization() {
     }
   };
 
-  const currentYield = gameState ? (92.0 + (gameState.current_telemetry?.Pressure_Bar || 0) * 0.5).toFixed(1) : '94.2';
-  const theoreticYield = gameState ? (parseFloat(currentYield) + (priority - 50) * 0.05).toFixed(1) : (94.2 + (priority - 50) * 0.05).toFixed(1);
+  const rawYield = gameState ? (92.0 + (gameState.current_telemetry?.Pressure_Bar || 0) * 0.5) : 94.2;
+  const currentYield = rawYield.toFixed(1);
+  const theoreticYield = (rawYield + ((priority - 50) * 0.08)).toFixed(1);
+  const rawPower = gameState ? (gameState.current_telemetry?.Power_Consumption_kW || 428) : 428;
+  const currentPower = (rawPower - ((priority - 50) * 1.5)).toFixed(0);
+  const currentCarbon = (0.82 - ((priority - 50) * 0.005)).toFixed(2);
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: '"Inter", sans-serif' }}>
@@ -57,13 +61,13 @@ export default function Optimization() {
         <div>
           <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Energy Footprint</div>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {gameState ? (gameState.current_telemetry?.Power_Consumption_kW?.toFixed(0) || '428') : '428'} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>kwh/unit</span>
+            {currentPower} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>kwh/unit</span>
           </div>
         </div>
         <div>
           <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Carbon Intensity</div>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {gameState ? (0.8 + ((priority - 50) * -0.01)).toFixed(2) : '0.82'} <span style={{ fontSize: '0.9rem', color: '#666', display: 'flex', alignItems: 'center', fontWeight: 600 }}><ArrowDownward fontSize="inherit" /> 4.5%</span>
+            {currentCarbon} <span style={{ fontSize: '0.9rem', color: '#666', display: 'flex', alignItems: 'center', fontWeight: 600 }}><ArrowDownward fontSize="inherit" /> 4.5%</span>
           </div>
         </div>
       </div>
