@@ -4,6 +4,7 @@ import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 export default function Optimization() {
   const [priority, setPriority] = useState(50);
   const [gameState, setGameState] = useState(null);
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', type: '' });
 
   // Poll state to get latest yield/energy
   useEffect(() => {
@@ -34,9 +35,11 @@ export default function Optimization() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ priority_value: priority, priority_type: 'yield_vs_energy' })
       });
-      alert('Strategy Applied successfully!');
+      setConfirmation({ show: true, message: 'Strategy Applied successfully!', type: 'success' });
+      setTimeout(() => setConfirmation({ show: false, message: '', type: '' }), 3000);
     } catch (err) {
-      alert('Failed to apply strategy: ' + err.message);
+      setConfirmation({ show: true, message: 'Failed to apply strategy: ' + err.message, type: 'error' });
+      setTimeout(() => setConfirmation({ show: false, message: '', type: '' }), 4000);
     }
   };
 
@@ -97,13 +100,23 @@ export default function Optimization() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
             <button onClick={handleApplyStrategy} style={{ backgroundColor: '#131b2f', color: 'white', border: 'none', padding: '1rem 2.5rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
               APPLY STRATEGY
             </button>
             <button onClick={() => setPriority(50)} style={{ backgroundColor: 'transparent', color: '#888', border: 'none', padding: '1rem 2rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '1px', cursor: 'pointer' }}>
               RESET
             </button>
+            {confirmation.show && (
+              <span style={{ 
+                color: confirmation.type === 'success' ? '#2e7d32' : '#d32f2f', 
+                fontSize: '0.85rem', 
+                fontWeight: 600,
+                animation: 'fadeIn 0.3s ease-in'
+              }}>
+                {confirmation.message}
+              </span>
+            )}
           </div>
         </div>
 
