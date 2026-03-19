@@ -1,6 +1,23 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Dashboard, Tune, BarChart, Speed, Settings } from '@mui/icons-material';
+import { Dashboard, Tune, BarChart, Speed, Settings, History, Assessment } from '@mui/icons-material';
+
+const navItems = [
+  { to: '/', icon: Dashboard, label: 'Dashboard', end: true },
+  { to: '/optimization', icon: Tune, label: 'Optimization' },
+  { to: '/explainability', icon: BarChart, label: 'Analytics' },
+  { to: '/execution', icon: Speed, label: 'Execution' },
+  { to: '/history', icon: History, label: 'History' },
+  { to: '/gap-analysis', icon: Assessment, label: 'Gap Analysis' },
+];
+
+const navStyle = (isActive) => ({
+  display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px',
+  textDecoration: 'none', color: isActive ? '#1152d4' : '#666',
+  backgroundColor: isActive ? '#f0f4ff' : 'transparent',
+  fontWeight: isActive ? 600 : 500,
+  fontSize: '0.95rem'
+});
 
 const Layout = () => {
   return (
@@ -12,69 +29,16 @@ const Layout = () => {
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 1rem' }}>
-          <NavLink
-            to="/"
-            end
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', 
-              textDecoration: 'none', color: isActive ? '#1152d4' : '#666', 
-              backgroundColor: isActive ? '#f0f4ff' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              fontSize: '0.95rem'
-            })}
-          >
-            <Dashboard fontSize="small"/> Dashboard
-          </NavLink>
-          <NavLink
-            to="/optimization"
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', 
-              textDecoration: 'none', color: isActive ? '#1152d4' : '#666', 
-              backgroundColor: isActive ? '#f0f4ff' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              fontSize: '0.95rem'
-            })}
-          >
-            <Tune fontSize="small"/> Optimization
-          </NavLink>
-          <NavLink
-            to="/explainability"
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', 
-              textDecoration: 'none', color: isActive ? '#1152d4' : '#666', 
-              backgroundColor: isActive ? '#f0f4ff' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              fontSize: '0.95rem'
-            })}
-          >
-            <BarChart fontSize="small"/> Analytics
-          </NavLink>
-          <NavLink
-            to="/execution"
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', 
-              textDecoration: 'none', color: isActive ? '#1152d4' : '#666', 
-              backgroundColor: isActive ? '#f0f4ff' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              fontSize: '0.95rem'
-            })}
-          >
-            <Speed fontSize="small"/> Execution
-          </NavLink>
+          {navItems.map(({ to, icon: Icon, label, end }) => (
+            <NavLink key={to} to={to} end={end} style={({ isActive }) => navStyle(isActive)}>
+              <Icon fontSize="small" /> {label}
+            </NavLink>
+          ))}
         </div>
 
         <div style={{ marginTop: 'auto', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          <NavLink
-            to="/settings"
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', 
-              textDecoration: 'none', color: isActive ? '#1152d4' : '#666', 
-              backgroundColor: isActive ? '#f0f4ff' : 'transparent',
-              fontWeight: isActive ? 600 : 500,
-              fontSize: '0.95rem'
-            })}
-          >
-            <Settings fontSize="small"/> Settings
+          <NavLink to="/settings" style={({ isActive }) => navStyle(isActive)}>
+            <Settings fontSize="small" /> Settings
           </NavLink>
         </div>
       </nav>
