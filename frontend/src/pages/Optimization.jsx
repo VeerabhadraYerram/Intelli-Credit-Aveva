@@ -67,16 +67,41 @@ export default function Optimization() {
     }
   };
 
-  const rawYield = gameState ? (92.0 + (gameState.current_telemetry?.Pressure_Bar || 0) * 0.5) : 94.2;
-  const currentYield = rawYield.toFixed(1);
-  const theoreticYield = (rawYield + ((priority - 50) * 0.08)).toFixed(1);
-  const rawPower = gameState ? (gameState.current_telemetry?.Power_Consumption_kW || 428) : 428;
-  const currentPower = (rawPower - ((priority - 50) * 1.5)).toFixed(0);
+  // --- Real data from backend ---
+  const outcome = gameState?.simulated_outcome || {};
+  const qualityDelta = gameState?.quality_delta || 0;
+  const intervals = gameState?.prediction_intervals || {};
+  const recommendations = gameState?.energy_recommendations || [];
+  const noveltyWarning = gameState?.novelty_warning || {};
+
+  // Current Yield: real simulated outcome or prediction interval
+  const currentYield = outcome.Tablet_Weight
+    ? outcome.Tablet_Weight.toFixed(1)
+    : (intervals.Tablet_Weight?.predicted ? intervals.Tablet_Weight.predicted.toFixed(1) : '---');
+
+  // Predicted Yield from prediction intervals
+  const predictedYield = intervals.Tablet_Weight?.predicted
+    ? intervals.Tablet_Weight.predicted.toFixed(1)
+    : currentYield;
+
+  // Current Power from outcome or telemetry
+  const currentPower = outcome.Power_Consumption_kW
+    ? outcome.Power_Consumption_kW.toFixed(1)
+    : (gameState?.current_telemetry?.Power_Consumption_kW?.toFixed(1) || '---');
 
   // Real carbon metrics
   const carbonKg = gameState?.carbon_metrics?.carbon_kg || carbonMetrics?.avg_carbon_per_batch || 0;
-  const carbonIntensity = carbonKg > 0 ? (carbonKg / Math.max(rawPower * 1.5, 0.01)).toFixed(3) : '0.000';
   const cumulativeCarbon = carbonMetrics?.cumulative_carbon_kg || 0;
+
+  // Predicted carbon from intervals
+  const predictedCarbon = intervals.Power_Consumption_kW
+    ? (intervals.Power_Consumption_kW.predicted * 0.82 / 60).toFixed(3)  // India grid emission factor
+    : carbonKg.toFixed(2);
+
+  // Confidence from novelty detection (real) — show whether input is known
+  const confidenceScore = noveltyWarning?.distance != null
+    ? Math.max(0, Math.min(100, 100 - noveltyWarning.distance * 2)).toFixed(0)
+    : '---';
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: '"Inter", sans-serif' }}>
@@ -84,15 +109,21 @@ export default function Optimization() {
       {/* Top Metrics Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '2rem', marginBottom: '3rem' }}>
         <div>
-          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Current Yield</div>
+          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Tablet Weight</div>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {currentYield}% <span style={{ fontSize: '0.9rem', color: '#2e7d32', display: 'flex', alignItems: 'center', fontWeight: 600 }}><ArrowUpward fontSize="inherit" /> 1.2%</span>
+            {currentYield}
+            {qualityDelta !== 0 && (
+              <span style={{ fontSize: '0.9rem', color: qualityDelta > 0 ? '#2e7d32' : '#d32f2f', display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+                {qualityDelta > 0 ? <ArrowUpward fontSize="inherit" /> : <ArrowDownward fontSize="inherit" />}
+                {qualityDelta > 0 ? '+' : ''}{(qualityDelta * 100).toFixed(2)}%
+              </span>
+            )}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Energy Footprint</div>
+          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Power Consumption</div>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {currentPower} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>kwh/unit</span>
+            {currentPower} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>kW</span>
           </div>
         </div>
         <div>
@@ -109,7 +140,7 @@ export default function Optimization() {
       <div style={{ display: 'flex', gap: '4rem' }}>
         {/* Left: Sliders + Objective Selector */}
         <div style={{ flex: 1 }}>
-          {/* NEW: Multi-Target Objective Selector */}
+          {/* Multi-Target Objective Selector */}
           <div style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 1rem 0' }}>Optimization Objective</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -173,29 +204,43 @@ export default function Optimization() {
           <h3 style={{ fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase', margin: 0 }}>Predicted Outcome</h3>
           
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Estimated Yield</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Predicted Tablet Weight</div>
             <div style={{ fontSize: '2.25rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              {theoreticYield}% <span style={{ fontSize: '0.85rem', color: '#2e7d32', fontWeight: 600 }}>{(theoreticYield - parseFloat(currentYield)).toFixed(1) > 0 ? '+' : ''}{(theoreticYield - parseFloat(currentYield)).toFixed(1)}%</span>
+              {predictedYield}
             </div>
+            {intervals.Tablet_Weight && (
+              <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' }}>
+                [{intervals.Tablet_Weight.lower_10?.toFixed(1)} — {intervals.Tablet_Weight.upper_90?.toFixed(1)}]
+              </div>
+            )}
           </div>
 
           <div>
             <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Est. Carbon Impact</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '0.5rem' }}>
-              {(carbonKg * (1 - (priority - 50) * 0.005)).toFixed(2)} <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>kgCO₂</span>
+              {predictedCarbon} <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>kgCO₂</span>
             </div>
           </div>
           
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '1rem' }}>Confidence</div>
+            <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '1rem' }}>Model Confidence</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ height: '4px', backgroundColor: '#1a1a1a', flex: 1 }}></div>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{gameState ? (90 + (gameState.current_telemetry?.Vibration_mm_s || 0) % 8).toFixed(0) : '92'}%</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{confidenceScore}{confidenceScore !== '---' && '%'}</span>
             </div>
+            {noveltyWarning?.is_novel && (
+              <div style={{ fontSize: '0.75rem', color: '#d32f2f', marginTop: '0.5rem', fontWeight: 600 }}>
+                ⚠ Outside training distribution
+              </div>
+            )}
           </div>
           
           <div style={{ fontSize: '0.75rem', lineHeight: 1.6, color: '#666', borderTop: '1px solid #eaeaea', paddingTop: '1.5rem' }}>
-            <strong style={{ color: '#1a1a1a' }}>REC:</strong> {priority > 50 ? 'OPTIMIZE THERMAL REACTORS FOR LOWER POWER DRAW WHILE MAINTAINING STRUCTURAL INTEGRITY.' : 'INCREASE THERMAL ENVELOPE TO MAXIMIZE THROUGHPUT VELOCITY.'}
+            {recommendations.length > 0 ? (
+              <div><strong style={{ color: '#1a1a1a' }}>REC:</strong> {recommendations[0]}</div>
+            ) : (
+              <div><strong style={{ color: '#1a1a1a' }}>REC:</strong> All systems operating within normal parameters.</div>
+            )}
           </div>
         </div>
       </div>

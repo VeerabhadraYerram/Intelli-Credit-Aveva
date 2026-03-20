@@ -52,9 +52,20 @@ export default function Explainability() {
   }, []);
 
   const settings = gameState?.proposed_settings || {};
+  const rawSettings = gameState?.raw_settings || {};
   const anomalies = gameState?.energy_anomalies || energyData?.anomalies || [];
   const healthScore = gameState?.asset_health_score || energyData?.asset_health_score || 100;
   const recommendations = gameState?.energy_recommendations || energyData?.recommendations || [];
+  const bounds = gameState?.bounds || {};
+
+  // Count real RepairLayer violations: variables where raw_settings differ from proposed_settings
+  const violationsCount = Object.keys(rawSettings).length > 0
+    ? Object.keys(rawSettings).filter(key => {
+        const raw = rawSettings[key];
+        const proposed = settings[key];
+        return raw != null && proposed != null && Math.abs(raw - proposed) > 0.01;
+      }).length
+    : 0;
 
   const criticalCount = anomalies.filter(a => a.severity === 'CRITICAL').length;
   const warningCount = anomalies.filter(a => a.severity === 'WARNING').length;
@@ -114,7 +125,7 @@ export default function Explainability() {
             <Engineering fontSize="small" /> Repair Layer
           </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.5rem', color: '#333' }}>
-            {gameState ? Math.floor(1 + (settings.Granulation_Time || 0) % 4) : '2'} Violations Prevented
+            {violationsCount} Violations Prevented
           </div>
         </div>
       </div>
