@@ -176,10 +176,10 @@ async def new_batch(background_tasks: BackgroundTasks):
     # Load a random Golden Signature row to use as realistic telemetry
     golden_path = os.path.join(DATA_DIR, "golden_signatures.csv")
     try:
-        golden_df = pd.read_csv(golden_path)
+        golden_df = pd.read_csv(golden_path, nrows=200)  # match initialize_system max_signatures
         ctx_cols = [c for c in golden_df.columns if c.startswith("ctx_")]
         
-        # Pick a random row as the "live" telemetry base
+        # Pick a random row from the SAME pool that Qdrant has ingested
         row = golden_df.sample(1).iloc[0]
         rng = np.random.default_rng()
         
