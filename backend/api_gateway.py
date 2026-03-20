@@ -117,9 +117,11 @@ async def get_graph_state(batch_id: str):
         "current_telemetry": state_vals.get("current_telemetry", {}),
         "historical_baseline": state_vals.get("historical_baseline", {}),
         "proposed_settings": state_vals.get("proposed_settings", {}),
+        "raw_settings": state_vals.get("raw_settings", {}),
         "simulated_outcome": state_vals.get("simulated_outcome", {}),
         "quality_delta": state_vals.get("quality_delta", 0.0),
         "qdrant_updated": state_vals.get("qdrant_updated", False),
+        "baseline_score": state_vals.get("baseline_score", 0.0),
         "bounds": DECISION_BOUNDS,
         # NEW fields
         "carbon_metrics": state_vals.get("carbon_metrics", {}),
@@ -128,6 +130,11 @@ async def get_graph_state(batch_id: str):
         "energy_recommendations": state_vals.get("energy_recommendations", []),
         "past_decision_warnings": state_vals.get("past_decision_warnings", []),
         "optimization_priorities": state_vals.get("optimization_priorities", _current_priorities),
+        # Phase 2 fields
+        "no_confident_match": state_vals.get("no_confident_match", False),
+        "novelty_warning": state_vals.get("novelty_warning", {}),
+        "prediction_intervals": state_vals.get("prediction_intervals", {}),
+        "retraining_alert": state_vals.get("retraining_alert", False),
     }
 
 @app.post("/api/execute_decision")

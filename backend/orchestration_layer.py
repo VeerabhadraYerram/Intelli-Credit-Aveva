@@ -98,7 +98,8 @@ MCP_TOOL_NAME = "execute_machine_parameters"
 
 def _to_native(obj: Any) -> Any:
     """Recursively convert numpy types to Python native types for
-    JSON/msgpack serialization compatibility with LangGraph checkpoints."""
+    JSON/msgpack serialization compatibility with LangGraph checkpoints.
+    Also sanitizes inf/nan which are not JSON-compliant."""
     if isinstance(obj, dict):
         return {k: _to_native(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
@@ -106,9 +107,18 @@ def _to_native(obj: Any) -> Any:
     elif isinstance(obj, (np.integer,)):
         return int(obj)
     elif isinstance(obj, (np.floating,)):
-        return float(obj)
+        v = float(obj)
+        if np.isnan(v) or np.isinf(v):
+            return None
+        return v
+    elif isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return obj
     elif isinstance(obj, np.ndarray):
-        return obj.tolist()
+        return _to_native(obj.tolist())
+    elif isinstance(obj, (np.bool_,)):
+        return bool(obj)
     return obj
 
 
@@ -220,7 +230,29 @@ class ManufacturingState(BaseModel):
         description="User-configurable optimization objective priorities",
     )
 
+    # ── Phase 2: Qdrant Fallback ───────────────────────────────────
+    no_confident_match: bool = Field(
+        default=False,
+        description="True if Qdrant returned no confident match (score < 0.85)",
+    )
 
+    # ── Phase 2: Novelty Detection ─────────────────────────────────
+    novelty_warning: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Novelty detection result from Mahalanobis distance check",
+    )
+
+    # ── Phase 2: Prediction Intervals ──────────────────────────────
+    prediction_intervals: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Uncertainty quantification: lower/upper bounds per target",
+    )
+
+    # ── Phase 2: Drift Detection ───────────────────────────────────
+    retraining_alert: bool = Field(
+        default=False,
+        description="True if model drift detected (3+ consecutive OOB batches)",
+    )
 # =====================================================================
 # 2. VECTOR MEMORY  --  Qdrant Manager (Raw Numerical Vectors)
 # =====================================================================
@@ -612,6 +644,9 @@ _current_priorities: Dict[str, Any] = {
     "mode": "yield_vs_energy",
 }
 
+# ── Phase 2: Drift Detection counter ────────────────────────────────
+_drift_counter: int = 0  # consecutive batches outside prediction interval
+
 # ── NEW: Regulatory targets ─────────────────────────────────────────
 _regulatory_targets: Dict[str, Any] = {
     "max_carbon_per_batch_kg": 25.0,
@@ -662,6 +697,16 @@ def data_router_node(state: ManufacturingState) -> dict:
         baseline.get("source", "unknown"),
     )
 
+    # ── Phase 2: Qdrant Fallback (Feature 12) ─────────────────────
+    QDRANT_CONFIDENCE_THRESHOLD = 0.85
+    no_confident_match = score < QDRANT_CONFIDENCE_THRESHOLD
+    if no_confident_match:
+        log.warning("  ⚠ LOW QDRANT CONFIDENCE: score %.4f < %.2f threshold",
+                    score, QDRANT_CONFIDENCE_THRESHOLD)
+        log.warning("  → No close historical scenario found — recommend manual review")
+    else:
+        log.info("  ✓ Qdrant match above confidence threshold")
+
     # ── NEW: Energy Pattern Analysis ──────────────────────────────
     energy_result = _energy_analyzer.analyze_patterns(
         state.current_telemetry, baseline
@@ -674,6 +719,7 @@ def data_router_node(state: ManufacturingState) -> dict:
     return _to_native({
         "historical_baseline": baseline,
         "baseline_score": score,
+        "no_confident_match": no_confident_match,
         "energy_anomalies": energy_result["anomalies"],
         "asset_health_score": energy_result["asset_health_score"],
         "energy_recommendations": energy_result["recommendations"],
@@ -758,10 +804,32 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
     # ── Openlayer monitoring ────────────────────────────────────────
     _openlayer.log_proxy_output(raw_settings, proposed, state.batch_id)
 
-    return _to_native({
-        "proposed_settings": proposed,
+    state_additions = {
         "raw_settings": raw_settings,
-    })
+        "proposed_settings": proposed,
+    }
+
+    # ── Feature 12: Qdrant Fallback ──────────────────────────────────
+    no_confident_match = state.baseline_score < 0.85
+    if no_confident_match:
+        log.warning("  ⚠️ Low Qdrant Match Score (%.4f) - Triggering Fallback Warning", state.baseline_score)
+    state_additions["no_confident_match"] = no_confident_match
+
+    # ── Feature 10: Novelty Detection from Surrogate ──────────────────
+    if _surrogate_model and _surrogate_model._is_fitted:
+        try:
+            novelty_result = _surrogate_model.check_novelty(context_values)
+            state_additions["novelty_warning"] = novelty_result
+            if novelty_result.get("is_novel", False):
+                log.warning("  ⚠️ Novelty detected! Mahalanobis distance %.2f > threshold %.2f",
+                            novelty_result["distance"], novelty_result["threshold"])
+            else:
+                log.info("  ✓ Input within known training distribution (dist=%.2f)",
+                         novelty_result.get("distance", 0))
+        except Exception as e:
+            log.error("  Novelty check failed: %s", e)
+
+    return _to_native(state_additions)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -917,6 +985,62 @@ def execution_node(state: ManufacturingState) -> dict:
     else:
         log.info("  No improvement over baseline. Qdrant NOT updated.")
 
+    # ── FEATURE 13: Drift Detection (uses predict_with_uncertainty) ──
+    global _drift_counter
+    retraining_alert = False
+    prediction_intervals = {}
+    if _surrogate_model and _surrogate_model._is_fitted:
+        try:
+            # Build input feature vector matching surrogate's feature_names
+            feat_vals = []
+            for fname in _surrogate_model.feature_names:
+                if fname in state.proposed_settings:
+                    feat_vals.append(float(state.proposed_settings[fname]))
+                elif fname in state.current_telemetry:
+                    feat_vals.append(float(state.current_telemetry[fname]))
+                else:
+                    feat_vals.append(0.0)
+            X_full = np.array([feat_vals], dtype=np.float64)
+
+            uq_result = _surrogate_model.predict_with_uncertainty(X_full)
+            lower = uq_result["lower"][0]
+            upper = uq_result["upper"][0]
+            mean = uq_result["mean"][0]
+
+            # Build human-readable prediction intervals
+            for i, target in enumerate(_surrogate_model.target_names):
+                prediction_intervals[target] = {
+                    "predicted": float(mean[i]),
+                    "lower_10": float(lower[i]),
+                    "upper_90": float(upper[i]),
+                    "band_width": float(upper[i] - lower[i]),
+                }
+
+            # Check if actual outcomes are within predicted intervals
+            out_of_bounds = False
+            for target in _surrogate_model.target_names:
+                actual_val = outcome.get(target)
+                if actual_val is not None and target in prediction_intervals:
+                    pi = prediction_intervals[target]
+                    if actual_val < pi["lower_10"] or actual_val > pi["upper_90"]:
+                        out_of_bounds = True
+                        log.warning("  🚨 DRIFT: Actual %s (%.2f) outside [%.2f, %.2f]",
+                                    target, actual_val, pi["lower_10"], pi["upper_90"])
+
+            if out_of_bounds:
+                _drift_counter += 1
+                log.warning("  Consecutive OOB batches: %d", _drift_counter)
+            else:
+                _drift_counter = 0
+                log.info("  ✓ All outcomes within predicted intervals")
+
+            if _drift_counter >= 3:
+                retraining_alert = True
+                log.warning("  🔴 RETRAINING ALERT: %d consecutive batches outside intervals",
+                            _drift_counter)
+        except Exception as e:
+            log.error("  Drift detection failed: %s", e)
+
     # ── NEW: Carbon Emission Tracking ─────────────────────────────
     power_kw = outcome.get("Power_Consumption_kW", 20.0)
     carbon_result = _carbon_tracker.track_batch(
@@ -954,6 +1078,8 @@ def execution_node(state: ManufacturingState) -> dict:
         "quality_delta": float(quality_delta),
         "qdrant_updated": qdrant_updated,
         "carbon_metrics": carbon_result,
+        "retraining_alert": retraining_alert,
+        "prediction_intervals": prediction_intervals,
     })
 
 
