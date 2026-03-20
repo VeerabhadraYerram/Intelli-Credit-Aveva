@@ -159,34 +159,64 @@ async def execute_decision(payload: DecisionPayload):
 
 @app.post("/api/new_batch")
 async def new_batch(background_tasks: BackgroundTasks):
-    """Generate a new batch with random telemetry and trigger the optimization graph."""
+    """Generate a new batch with realistic telemetry and trigger the optimization graph.
+    
+    Samples a real Golden Signature row from the CSV and adds slight perturbation
+    so the Qdrant vector search produces meaningful (high) match scores.
+    """
     global latest_batch_id
-    # Generate a unique batch ID
+    import pandas as pd
+    import numpy as np
+    from data_layer import DATA_DIR
+    import os
+
     batch_id = f"BATCH-{uuid.uuid4().hex[:6].upper()}"
     latest_batch_id = batch_id
     
-    # Build realistic 284-dimensional mock telemetry
-    mock_telemetry = {
-        "Temperature_C": round(random.uniform(60, 95), 1),
-        "Pressure_Bar": round(random.uniform(1.0, 3.0), 2),
-        "Humidity_Percent": round(random.uniform(25, 60), 1),
-        "Motor_Speed_RPM": round(random.uniform(40, 100), 1),
-        "Compression_Force_kN": round(random.uniform(8, 25), 1),
-        "Flow_Rate_LPM": round(random.uniform(80, 200), 1),
-        "Power_Consumption_kW": round(random.uniform(15, 50), 1),
-        "Vibration_mm_s": round(random.uniform(2, 8), 2),
-        "Thermal_Ramp_Rate": round(random.uniform(0.5, 3.0), 2),
-        "Power_AUC": round(random.uniform(500, 2000), 1),
-        "Vibration_AUC": round(random.uniform(100, 500), 1),
-    }
-    
-    # Pad to 284 features to match the Golden Signature context dimension
-    for i in range(284 - len(mock_telemetry)):
-        mock_telemetry[f"Feature_{i}"] = round(random.gauss(0.5, 0.1), 4)
+    # Load a random Golden Signature row to use as realistic telemetry
+    golden_path = os.path.join(DATA_DIR, "golden_signatures.csv")
+    try:
+        golden_df = pd.read_csv(golden_path)
+        ctx_cols = [c for c in golden_df.columns if c.startswith("ctx_")]
+        
+        # Pick a random row as the "live" telemetry base
+        row = golden_df.sample(1).iloc[0]
+        rng = np.random.default_rng()
+        
+        # Build telemetry with the CORRECT ctx_ column names + slight noise
+        mock_telemetry = {}
+        for col in ctx_cols:
+            base_val = float(row[col]) if pd.notna(row[col]) else 0.0
+            # Add 3-8% random perturbation to simulate real variation
+            noise = rng.normal(0, 0.05) * abs(base_val) if abs(base_val) > 1e-6 else rng.normal(0, 0.01)
+            mock_telemetry[col] = round(base_val + noise, 4)
+        
+        # Also include human-readable sensor values for the Dashboard UI
+        mock_telemetry["Temperature_C"] = mock_telemetry.get("ctx_Preparation_Temperature_C_mean", round(random.uniform(60, 95), 1))
+        mock_telemetry["Pressure_Bar"] = mock_telemetry.get("ctx_Preparation_Pressure_Bar_mean", round(random.uniform(1.0, 3.0), 2))
+        mock_telemetry["Humidity_Percent"] = mock_telemetry.get("ctx_Preparation_Humidity_Percent_mean", round(random.uniform(25, 60), 1))
+        mock_telemetry["Motor_Speed_RPM"] = mock_telemetry.get("ctx_Compression_Motor_Speed_RPM_mean", round(random.uniform(40, 100), 1))
+        mock_telemetry["Compression_Force_kN"] = mock_telemetry.get("ctx_Compression_Compression_Force_kN_mean", round(random.uniform(8, 25), 1))
+        mock_telemetry["Flow_Rate_LPM"] = mock_telemetry.get("ctx_Granulation_Flow_Rate_LPM_mean", round(random.uniform(80, 200), 1))
+        mock_telemetry["Power_Consumption_kW"] = mock_telemetry.get("ctx_Compression_Power_Consumption_kW_mean", round(random.uniform(15, 50), 1))
+        mock_telemetry["Vibration_mm_s"] = mock_telemetry.get("ctx_Compression_Vibration_mm_s_mean", round(random.uniform(2, 8), 2))
+        
+    except Exception as e:
+        print(f"⚠ Could not load golden signatures for telemetry: {e}")
+        # Fallback to basic random telemetry
+        mock_telemetry = {
+            "Temperature_C": round(random.uniform(60, 95), 1),
+            "Pressure_Bar": round(random.uniform(1.0, 3.0), 2),
+            "Humidity_Percent": round(random.uniform(25, 60), 1),
+            "Motor_Speed_RPM": round(random.uniform(40, 100), 1),
+            "Power_Consumption_kW": round(random.uniform(15, 50), 1),
+            "Vibration_mm_s": round(random.uniform(2, 8), 2),
+        }
     
     background_tasks.add_task(run_graph_background, batch_id, mock_telemetry)
     print(f"🆕 New batch triggered from dashboard: {batch_id}")
     return {"status": "started", "batch_id": batch_id}
+
 
 
 # =====================================================================
