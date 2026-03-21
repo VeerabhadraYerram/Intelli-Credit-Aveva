@@ -66,24 +66,24 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '2rem', letterSpacing: '-0.5px' }}>System Overview</h1>
           <p style={{ color: '#666', marginTop: '0.5rem' }}>{batchId ? `Active Batch: ${batchId}` : 'No active batch'}</p>
         </div>
-        <button 
+        <button
           onClick={handleNewBatch}
           disabled={isStarting}
-          style={{ 
-            backgroundColor: '#1152d4', color: 'white', border: 'none', padding: '0.75rem 1.5rem', 
+          style={{
+            backgroundColor: '#1152d4', color: 'white', border: 'none', padding: '0.75rem 1.5rem',
             borderRadius: '6px', fontWeight: 600, cursor: isStarting ? 'not-allowed' : 'pointer',
             opacity: isStarting ? 0.7 : 1
           }}>
           {isStarting ? "Initializing..." : "Run New Batch"}
         </button>
       </div>
-      
+
       {error && <div style={{ color: '#d32f2f', padding: '1rem', backgroundColor: '#ffebee', borderRadius: '4px' }}>{error}</div>}
 
       {/* Top KPI Cards */}
@@ -98,22 +98,16 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Tablet Weight</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {yieldDisplay}
-            {qualityDelta !== 0 && (
-              <span style={{ fontSize: '0.9rem', color: qualityDelta > 0 ? '#2e7d32' : '#d32f2f', display: 'flex', alignItems: 'center', fontWeight: 600 }}>
-                {qualityDelta > 0 ? <ArrowUpward fontSize="inherit" /> : <ArrowDownward fontSize="inherit" />}
-                {qualityDelta > 0 ? '+' : ''}{(qualityDelta * 100).toFixed(2)}%
-              </span>
-            )}
+          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Model Confidence</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem', color: baselineScore > 0.9 ? '#2e7d32' : baselineScore > 0.7 ? '#ed6c02' : '#1a1a1a' }}>
+            {baselineScore > 0 ? (baselineScore * 100).toFixed(0) : '---'}
+            {baselineScore > 0 && <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>%</span>}
           </div>
         </div>
         <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Carbon / Batch</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            {(carbonMetrics?.carbon_kg || 0).toFixed(1)}
-            <span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>kgCO₂</span>
+          <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Execution Status</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '0.5rem', color: gameState?.execution_status === 'executed' ? '#2e7d32' : gameState?.execution_status === 'rejected' ? '#d32f2f' : '#f57c00' }}>
+            {gameState?.execution_status === 'executed' ? '✓ Executed' : gameState?.execution_status === 'rejected' ? '✗ Rejected' : gameState?.paused_for_hitl ? '⏸ Awaiting Approval' : gameState ? '⏳ Processing' : '---'}
           </div>
         </div>
         <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -133,7 +127,7 @@ export default function Dashboard() {
       {/* Telemetry Signature */}
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem' }}>Telemetry Signature</h2>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
           <div>
             <div style={{ color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Temperature (°C)</div>

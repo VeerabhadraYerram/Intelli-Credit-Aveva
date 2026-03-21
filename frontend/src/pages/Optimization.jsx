@@ -72,7 +72,6 @@ export default function Optimization() {
   const qualityDelta = gameState?.quality_delta || 0;
   const intervals = gameState?.prediction_intervals || {};
   const recommendations = gameState?.energy_recommendations || [];
-  const noveltyWarning = gameState?.novelty_warning || {};
 
   // Current Yield: real simulated outcome or prediction interval
   const currentYield = outcome.Tablet_Weight
@@ -98,10 +97,11 @@ export default function Optimization() {
     ? (intervals.Power_Consumption_kW.predicted * 0.82 / 60).toFixed(3)  // India grid emission factor
     : carbonKg.toFixed(2);
 
-  // Confidence from novelty detection (real) — show whether input is known
-  const confidenceScore = noveltyWarning?.distance != null
-    ? Math.max(0, Math.min(100, 100 - noveltyWarning.distance * 2)).toFixed(0)
-    : '---';
+  // Confidence from Qdrant baseline score (cosine similarity) — the REAL working metric
+  const baselineScore = gameState?.baseline_score || 0;
+  const confidenceScore = baselineScore > 0 ? (baselineScore * 100).toFixed(0) : '---';
+  // Show novelty warning only when Qdrant match is genuinely low
+  const noveltyWarning = { is_novel: baselineScore > 0 && baselineScore < 0.85 };
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: '"Inter", sans-serif' }}>

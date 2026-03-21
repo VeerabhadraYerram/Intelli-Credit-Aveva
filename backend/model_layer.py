@@ -1,6 +1,6 @@
 """
 ==============================================================================
-MODEL LAYER — Phase 1: The Core Engine
+MODEL LAYER - Phase 1: The Core Engine
 ==============================================================================
 Optimization Proxy (feed-forward PyTorch neural network) with a deterministic
 Repair Layer that enforces physical manufacturing constraints via alternating
@@ -40,15 +40,15 @@ from offline_optimizer import (
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # DEVICE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. REPAIR LAYER — Deterministic Physical Constraint Enforcement
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
+# 1. REPAIR LAYER - Deterministic Physical Constraint Enforcement
+# ----------------------------------------------------------------------------─
 class RepairLayer(nn.Module):
     """Deterministic feasibility/repair layer that forces neural network
     outputs to strictly adhere to factory physical constraints.
@@ -63,7 +63,7 @@ class RepairLayer(nn.Module):
       1. **Hard Clamping (Projection):** Each output dimension is independently
          clamped to its physically feasible range using `torch.clamp()`.
          This is mathematically equivalent to an orthogonal projection onto
-         the feasible hyperrectangle — it finds the closest feasible point
+         the feasible hyperrectangle - it finds the closest feasible point
          to the network's raw output while preserving all other dimensions.
 
       2. **Differentiability:** `torch.clamp()` has well-defined (sub)gradients:
@@ -71,7 +71,7 @@ class RepairLayer(nn.Module):
          - gradient = 0.0 when hitting bounds (straight-through estimator)
          This allows gradients to flow during backprop for inputs within
          bounds, and zeros the gradient for clamped outputs (they're already
-         at the boundary — no further push needed).
+         at the boundary - no further push needed).
 
       3. **Alternating Projections (Cross-constraint):** If coupling constraints
          exist (e.g., `Compression_Force` must correlate with `Machine_Speed`),
@@ -116,10 +116,10 @@ class RepairLayer(nn.Module):
             Repaired (feasible) predictions, guaranteed to satisfy all
             physical constraints.
         """
-        # ── Step 1: Box constraint projection (hard clamping) ───────────
+        # -- Step 1: Box constraint projection (hard clamping) ----------─
         repaired = torch.clamp(raw_output, self.lower_bounds, self.upper_bounds)
 
-        # ── Step 2: Alternating projections for coupling constraints ────
+        # -- Step 2: Alternating projections for coupling constraints ----
         # Coupling constraint: if Compression_Force > 20 kN then
         #   Machine_Speed ≤ 60 RPM  (equipment de-rating under high load)
         for _ in range(self.max_projection_iters):
@@ -137,7 +137,7 @@ class RepairLayer(nn.Module):
                 repaired[high_force_mask, ms_idx] = constrained_speed[high_force_mask]
 
             # Coupling: Drying_Time should scale with Drying_Temp
-            #   higher temp → shorter drying time is acceptable
+            #   higher temp -> shorter drying time is acceptable
             dt_temp_idx = DECISION_VARS.index("Drying_Temp")
             dt_time_idx = DECISION_VARS.index("Drying_Time")
 
@@ -154,19 +154,19 @@ class RepairLayer(nn.Module):
         return repaired
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. OPTIMIZATION PROXY — Feed-Forward Neural Network
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
+# 2. OPTIMIZATION PROXY - Feed-Forward Neural Network
+# ----------------------------------------------------------------------------─
 class OptimizationProxy(nn.Module):
     """End-to-end neural network that instantly outputs optimal machine
     settings from incoming context features.
 
     Architecture:
-      Input → Linear → BatchNorm → GELU → Dropout
-            → Linear → BatchNorm → GELU → Dropout
-            → Linear → BatchNorm → GELU → Dropout
-            → Linear (output head)
-            → RepairLayer (deterministic clamping)
+      Input -> Linear -> BatchNorm -> GELU -> Dropout
+            -> Linear -> BatchNorm -> GELU -> Dropout
+            -> Linear -> BatchNorm -> GELU -> Dropout
+            -> Linear (output head)
+            -> RepairLayer (deterministic clamping)
 
     The Repair Layer is appended as the FINAL operation, guaranteeing
     that every output is physically feasible regardless of what the
@@ -199,11 +199,11 @@ class OptimizationProxy(nn.Module):
 
         self.backbone = nn.Sequential(*layers)
 
-        # ── The Repair Layer (CRUCIAL) ──────────────────────────────────
+        # -- The Repair Layer (CRUCIAL) ----------------------------------
         self.repair = RepairLayer()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass: features → backbone → repair → feasible settings.
+        """Forward pass: features -> backbone -> repair -> feasible settings.
 
         Parameters
         ----------
@@ -224,9 +224,9 @@ class OptimizationProxy(nn.Module):
         return self.backbone(x)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 3. TRAINING PIPELINE
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 class ProxyTrainer:
     """Training pipeline for the Optimization Proxy.
 
@@ -271,7 +271,7 @@ class ProxyTrainer:
         Tuple[DataLoader, DataLoader]
             Training and validation DataLoaders.
         """
-        # ── Identify input (context) and output (decision) columns ──────
+        # -- Identify input (context) and output (decision) columns ------
         context_cols = [c for c in golden_df.columns
                         if c.startswith("ctx_")]
         decision_cols = [c for c in DECISION_VARS if c in golden_df.columns]
@@ -288,11 +288,11 @@ class ProxyTrainer:
         X = np.nan_to_num(X, nan=0.0, posinf=1e6, neginf=-1e6)
         y = np.nan_to_num(y, nan=0.0, posinf=1e6, neginf=-1e6)
 
-        # ── Normalize ──────────────────────────────────────────────────
+        # -- Normalize --------------------------------------------------
         X_scaled = self.input_scaler.fit_transform(X).astype(np.float32)
         y_scaled = self.output_scaler.fit_transform(y).astype(np.float32)
 
-        # ── Train/val split (80/20) ─────────────────────────────────────
+        # -- Train/val split (80/20) ------------------------------------─
         n = len(X_scaled)
         n_train = int(0.8 * n)
         indices = np.random.default_rng(42).permutation(n)
@@ -343,7 +343,7 @@ class ProxyTrainer:
         best_val_loss = float("inf")
 
         for epoch in range(self.epochs):
-            # ── Training ────────────────────────────────────────────────
+            # -- Training ------------------------------------------------
             self.model.train()
             train_losses = []
             for X_batch, y_batch in train_loader:
@@ -364,7 +364,7 @@ class ProxyTrainer:
 
             self.scheduler.step()
 
-            # ── Validation ──────────────────────────────────────────────
+            # -- Validation ----------------------------------------------
             self.model.eval()
             val_losses = []
             with torch.no_grad():
@@ -388,13 +388,13 @@ class ProxyTrainer:
                       f"Val Loss = {avg_val:.6f}, "
                       f"LR = {self.scheduler.get_last_lr()[0]:.2e}")
 
-        print(f"\n  ✓ Training complete. Best validation loss: {best_val_loss:.6f}")
+        print(f"\n  [OK] Training complete. Best validation loss: {best_val_loss:.6f}")
         return history
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 4. INFERENCE ENGINE
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 class InferenceEngine:
     """Production-grade inference engine for the trained Optimization Proxy.
 
@@ -434,7 +434,7 @@ class InferenceEngine:
         X_scaled = self.input_scaler.transform(context_features).astype(np.float32)
         X_tensor = torch.tensor(X_scaled).to(DEVICE)
 
-        # Forward pass through backbone → get scaled predictions
+        # Forward pass through backbone -> get scaled predictions
         raw_scaled = self.model.backbone(X_tensor)
 
         # Inverse-scale to original decision-variable space
@@ -479,24 +479,24 @@ class InferenceEngine:
                 print(f"  ✗ {var}: {below} below min, {above} above max")
                 all_valid = False
             else:
-                print(f"  ✓ {var}: all values in [{lo}, {hi}]")
+                print(f"  [OK] {var}: all values in [{lo}, {hi}]")
         return all_valid
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # CLI ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 if __name__ == "__main__":
     print("╔══════════════════════════════════════════════════════════╗")
-    print("║      MODEL LAYER — Phase 1: Core Engine                 ║")
+    print("║      MODEL LAYER - Phase 1: Core Engine                 ║")
     print("║      Optimization Proxy + Repair Layer                  ║")
     print("╚══════════════════════════════════════════════════════════╝\n")
 
-    # ── Step 1: Build training data ─────────────────────────────────────
+    # -- Step 1: Build training data ------------------------------------─
     print("Step 1: Building training dataset...\n")
     training_data = build_training_dataset()
 
-    # ── Step 2: Generate Golden Signatures ──────────────────────────────
+    # -- Step 2: Generate Golden Signatures ------------------------------
     print("\nStep 2: Generating Golden Signatures via NSGA-II...\n")
     golden_sigs = generate_golden_signatures(
         training_df=training_data,
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     )
     print(f"  Generated {len(golden_sigs)} Golden Signatures")
 
-    # ── Step 3: Initialize and train proxy ──────────────────────────────
+    # -- Step 3: Initialize and train proxy ------------------------------
     print("\nStep 3: Training Optimization Proxy...\n")
     context_cols = [c for c in golden_sigs.columns if c.startswith("ctx_")]
     input_dim = len(context_cols)
@@ -526,7 +526,7 @@ if __name__ == "__main__":
     )
     history = trainer.train(golden_sigs)
 
-    # ── Step 4: Inference + Repair validation ───────────────────────────
+    # -- Step 4: Inference + Repair validation --------------------------─
     print("\nStep 4: Running inference with Repair Layer validation...\n")
     engine = InferenceEngine(
         model=proxy,
@@ -541,17 +541,17 @@ if __name__ == "__main__":
     print(f"\nSample predictions (first 5):")
     print(predictions.head().to_string(index=False))
 
-    # ── Step 5: Validate Repair Layer ───────────────────────────────────
+    # -- Step 5: Validate Repair Layer ----------------------------------─
     print(f"\nRepair Layer Constraint Validation:")
     constraints_ok = engine.validate_repair(predictions)
 
     if constraints_ok:
-        print(f"\n✓ ALL predictions satisfy physical constraints!")
+        print(f"\n[OK] ALL predictions satisfy physical constraints!")
         print(f"  The Repair Layer successfully enforces feasibility.")
     else:
-        print(f"\n✗ Some constraints violated — repair layer needs debugging")
+        print(f"\n✗ Some constraints violated - repair layer needs debugging")
 
-    # ── Step 6: Compare raw vs repaired outputs ─────────────────────────
+    # -- Step 6: Compare raw vs repaired outputs ------------------------─
     print(f"\n{'─' * 60}")
     print(f"Raw vs Repaired Output Comparison (first 3 samples):")
     print(f"{'─' * 60}")
@@ -574,10 +574,10 @@ if __name__ == "__main__":
             raw_val = raw_np[i, j]
             rep_val = repaired[i, j]
             clamped = "CLAMPED" if abs(raw_val - rep_val) > 1e-4 else "ok"
-            print(f"    {var:25s}: raw={raw_val:8.2f} → repaired={rep_val:8.2f} "
+            print(f"    {var:25s}: raw={raw_val:8.2f} -> repaired={rep_val:8.2f} "
                   f"[{lo:.1f}, {hi:.1f}] {clamped}")
 
-    # ── Summary ─────────────────────────────────────────────────────────
+    # -- Summary --------------------------------------------------------─
     print(f"\n{'=' * 60}")
     print(f"MODEL LAYER SUMMARY")
     print(f"{'=' * 60}")

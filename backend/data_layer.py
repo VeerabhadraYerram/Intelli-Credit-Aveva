@@ -1,6 +1,6 @@
 """
 ==============================================================================
-DATA LAYER — Phase 1: The Core Engine
+DATA LAYER - Phase 1: The Core Engine
 ==============================================================================
 Enterprise-grade data ingestion, validation, phase-aware feature engineering,
 Gaussian-noise data augmentation, and batch-level merge for the industrial AI
@@ -23,9 +23,9 @@ import pandas as pd
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 DATA_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data")
 
 PROCESS_FILE: str = "_h_batch_process_data.xlsx"
@@ -60,9 +60,9 @@ SENSOR_LIMITS: Dict[str, Tuple[float, float]] = {
 NOISE_FRACTION: float = 0.08  # 8 % of each feature's magnitude
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 1. INGESTION & VALIDATION
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 def load_process_data(filepath: Optional[str] = None) -> pd.DataFrame:
     """Load and validate the time-series process telemetry data.
 
@@ -80,39 +80,39 @@ def load_process_data(filepath: Optional[str] = None) -> pd.DataFrame:
     print(f"[DATA LAYER] Loading process data from: {path}")
     df = pd.read_excel(path)
 
-    # ── Schema check ────────────────────────────────────────────────────
+    # -- Schema check ----------------------------------------------------
     required = {"Batch_ID", "Time_Minutes", "Phase"} | set(SENSOR_COLS)
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Process data missing columns: {missing}")
 
-    # ── Null handling ───────────────────────────────────────────────────
+    # -- Null handling --------------------------------------------------─
     null_counts = df.isnull().sum()
     if null_counts.any():
-        print(f"  ⚠ Filling {null_counts.sum()} null values via forward-fill + zero")
+        print(f"  [WARNING] Filling {null_counts.sum()} null values via forward-fill + zero")
         df = df.ffill().fillna(0)
 
-    # ── Anomaly detection: IQR + physical limits ────────────────────────
+    # -- Anomaly detection: IQR + physical limits ------------------------
     anomalies_total = 0
     for col in SENSOR_COLS:
         lo, hi = SENSOR_LIMITS[col]
         mask = (df[col] < lo) | (df[col] > hi)
         n_bad = mask.sum()
         if n_bad:
-            print(f"  ⚠ {col}: {n_bad} readings outside [{lo}, {hi}] — clipping")
+            print(f"  [WARNING] {col}: {n_bad} readings outside [{lo}, {hi}] - clipping")
             df[col] = df[col].clip(lo, hi)
             anomalies_total += n_bad
 
-    # IQR-based outlier flagging (soft — log only, no removal)
+    # IQR-based outlier flagging (soft - log only, no removal)
     for col in SENSOR_COLS:
         q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
         iqr = q3 - q1
         lower, upper = q1 - 3.0 * iqr, q3 + 3.0 * iqr
         n_outlier = ((df[col] < lower) | (df[col] > upper)).sum()
         if n_outlier:
-            print(f"  ℹ {col}: {n_outlier} IQR outliers detected (kept)")
+            print(f"  [INFO] {col}: {n_outlier} IQR outliers detected (kept)")
 
-    print(f"  ✓ Process data validated — {len(df)} rows, {df['Batch_ID'].nunique()} batch(es)")
+    print(f"  [OK] Process data validated - {len(df)} rows, {df['Batch_ID'].nunique()} batch(es)")
     return df
 
 
@@ -146,22 +146,22 @@ def load_production_data(filepath: Optional[str] = None) -> pd.DataFrame:
     # Null handling
     null_counts = df.isnull().sum()
     if null_counts.any():
-        print(f"  ⚠ Filling {null_counts.sum()} null values with column medians")
+        print(f"  [WARNING] Filling {null_counts.sum()} null values with column medians")
         df = df.fillna(df.median(numeric_only=True))
 
     # Duplicate Batch_ID check
     dupes = df[df["Batch_ID"].duplicated()]
     if len(dupes):
-        print(f"  ⚠ Dropping {len(dupes)} duplicate Batch_ID entries")
+        print(f"  [WARNING] Dropping {len(dupes)} duplicate Batch_ID entries")
         df = df.drop_duplicates(subset=["Batch_ID"], keep="first")
 
-    print(f"  ✓ Production data validated — {len(df)} batches")
+    print(f"  [OK] Production data validated - {len(df)} batches")
     return df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 2. PHASE-AWARE FEATURE ENGINEERING
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 def _thermal_ramp_rate(phase_df: pd.DataFrame) -> float:
     """Calculate Thermal Ramp Rate (°C/min) for a phase segment.
 
@@ -260,7 +260,7 @@ def extract_phase_features(process_df: pd.DataFrame) -> pd.DataFrame:
         for phase in PHASES:
             pf = batch_df[batch_df["Phase"] == phase].sort_values("Time_Minutes")
 
-            # ── Statistical aggregates ──────────────────────────────────
+            # -- Statistical aggregates ----------------------------------
             for sensor in SENSOR_COLS:
                 prefix = f"{phase}_{sensor}"
                 if len(pf) > 0:
@@ -274,12 +274,12 @@ def extract_phase_features(process_df: pd.DataFrame) -> pd.DataFrame:
                     row[f"{prefix}_min"]  = 0.0
                     row[f"{prefix}_max"]  = 0.0
 
-            # ── Advanced features ───────────────────────────────────────
+            # -- Advanced features --------------------------------------─
             row[f"{phase}_Thermal_Ramp_Rate"] = _thermal_ramp_rate(pf)
             row[f"{phase}_Power_AUC"]         = _auc_trapz(pf, "Power_Consumption_kW")
             row[f"{phase}_Vibration_AUC"]     = _auc_trapz(pf, "Vibration_mm_s")
 
-            # ── Temporal Dynamics ───────────────────────────────────────
+            # -- Temporal Dynamics --------------------------------------─
             row[f"{phase}_Power_Peak_Mean_Ratio"] = _peak_to_mean_ratio(pf, "Power_Consumption_kW")
             row[f"{phase}_Max_Vibration_Relative_Time"] = _relative_time_of_max(pf, "Vibration_mm_s", batch_start, batch_end)
             if phase == "Granulation":
@@ -293,9 +293,9 @@ def extract_phase_features(process_df: pd.DataFrame) -> pd.DataFrame:
     return features_df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 3. DATA AUGMENTATION  (SMOTE-Style Bounded Interpolation)
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 def augment_telemetry_features(
     baseline_row: pd.Series,
     production_df: pd.DataFrame,
@@ -307,7 +307,7 @@ def augment_telemetry_features(
     Why this is necessary:
       The process telemetry file contains data for only 1 batch (T001).
       Duplicating identical features across 60 batches would cause
-      **feature collapse** — the surrogate model cannot learn if all
+      **feature collapse** - the surrogate model cannot learn if all
       input features are constant while outputs vary.
 
     Strategy (SMOTE-style bounded augmentation):
@@ -336,7 +336,7 @@ def augment_telemetry_features(
     Returns
     -------
     pd.DataFrame
-        Augmented feature matrix — one row per batch in production_df.
+        Augmented feature matrix - one row per batch in production_df.
     """
     rng = np.random.default_rng(seed)
     all_batch_ids = production_df["Batch_ID"].values
@@ -347,7 +347,7 @@ def augment_telemetry_features(
     baseline_values = baseline_row[feature_cols].values.astype(float)
     n_features = len(feature_cols)
 
-    # ── STEP 1: Create diverse "seed" rows via correlated perturbation ──
+    # -- STEP 1: Create diverse "seed" rows via correlated perturbation --
     n_seeds = min(n_batches, 10)  # Use up to 10 anchor points
     seed_matrix = np.tile(baseline_values, (n_seeds, 1))
 
@@ -384,7 +384,7 @@ def augment_telemetry_features(
     # Ensure non-negative seeds
     seed_matrix = np.maximum(seed_matrix, 0.0)
 
-    # ── STEP 2: Compute bounding ranges from seeds ──────────────────────
+    # -- STEP 2: Compute bounding ranges from seeds ----------------------
     feat_min = np.minimum(seed_matrix.min(axis=0), baseline_values * 0.7)
     feat_max = np.maximum(seed_matrix.max(axis=0), baseline_values * 1.3)
     # 10th–90th percentile safe zone (softer bounds for interpolation)
@@ -395,7 +395,7 @@ def augment_telemetry_features(
         feat_p10 = feat_min
         feat_p90 = feat_max
 
-    # ── STEP 3: SMOTE-style interpolation for all batches ───────────────
+    # -- STEP 3: SMOTE-style interpolation for all batches --------------─
     augmented_matrix = np.zeros((n_batches, n_features))
 
     for i in range(n_batches):
@@ -413,7 +413,7 @@ def augment_telemetry_features(
 
         augmented_matrix[i, :] = synthetic
 
-    # ── Production-setting correlation pass (for ALL batches) ───────────
+    # -- Production-setting correlation pass (for ALL batches) ----------─
     if "Drying_Temp" in production_df.columns:
         drying_temp_all = production_df["Drying_Temp"].values.astype(float)
         drying_temp_median = np.median(drying_temp_all)
@@ -438,12 +438,12 @@ def augment_telemetry_features(
             if col.startswith("Compression_") and "Force" in col:
                 augmented_matrix[:, j] *= force_ratio
 
-    # ── Row 0 = T001 keeps its exact baseline (no noise) ───────────────
+    # -- Row 0 = T001 keeps its exact baseline (no noise) --------------─
     t001_idx = np.where(all_batch_ids == "T001")[0]
     if len(t001_idx) > 0:
         augmented_matrix[t001_idx[0], :] = baseline_values
 
-    # ── Final bounding: non-negative + hard max ─────────────────────────
+    # -- Final bounding: non-negative + hard max ------------------------─
     augmented_matrix = np.maximum(augmented_matrix, 0.0)
     augmented_matrix = np.clip(augmented_matrix, feat_min, feat_max)
 
@@ -453,26 +453,26 @@ def augment_telemetry_features(
     print(f"[DATA LAYER] SMOTE-style augmented features for {n_batches} batches "
           f"(bounded to observed min/max, {n_seeds} seed anchors)")
 
-    # ── Verify variance (feature collapse check) ────────────────────────
+    # -- Verify variance (feature collapse check) ------------------------
     numeric_cols = augmented_df.select_dtypes(include=[np.number]).columns
     zero_var = (augmented_df[numeric_cols].std() == 0).sum()
     if zero_var > 0:
-        print(f"  ⚠ WARNING: {zero_var} features still have zero variance!")
+        print(f"  [WARNING] WARNING: {zero_var} features still have zero variance!")
     else:
-        print(f"  ✓ All {len(numeric_cols)} numeric features have non-zero variance")
+        print(f"  [OK] All {len(numeric_cols)} numeric features have non-zero variance")
 
     return augmented_df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. MERGE — Build final training dataset
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
+# 4. MERGE - Build final training dataset
+# ----------------------------------------------------------------------------─
 def build_training_dataset(
     process_df: Optional[pd.DataFrame] = None,
     production_df: Optional[pd.DataFrame] = None,
     noise_fraction: float = NOISE_FRACTION,
 ) -> pd.DataFrame:
-    """End-to-end pipeline: ingest → validate → engineer → augment → merge.
+    """End-to-end pipeline: ingest -> validate -> engineer -> augment -> merge.
 
     Parameters
     ----------
@@ -489,28 +489,28 @@ def build_training_dataset(
         Merged training dataset with production features, quality targets,
         and augmented phase-level telemetry features.
     """
-    # ── Load ────────────────────────────────────────────────────────────
+    # -- Load ------------------------------------------------------------
     if process_df is None:
         process_df = load_process_data()
     if production_df is None:
         production_df = load_production_data()
 
-    # ── Extract phase-level features from T001 ──────────────────────────
+    # -- Extract phase-level features from T001 --------------------------
     phase_features = extract_phase_features(process_df)
     baseline_row = phase_features.iloc[0]  # T001's feature vector
 
-    # ── Augment: produce varied rows for all 60 batches ─────────────────
+    # -- Augment: produce varied rows for all 60 batches ----------------─
     augmented_features = augment_telemetry_features(
         baseline_row, production_df, noise_fraction=noise_fraction
     )
 
-    # ── Merge on Batch_ID ───────────────────────────────────────────────
+    # -- Merge on Batch_ID ----------------------------------------------─
     merged = production_df.merge(augmented_features, on="Batch_ID", how="left")
 
-    # ── Final quality check ─────────────────────────────────────────────
+    # -- Final quality check --------------------------------------------─
     null_after_merge = merged.isnull().sum().sum()
     if null_after_merge:
-        print(f"  ⚠ {null_after_merge} nulls after merge — filling with 0")
+        print(f"  [WARNING] {null_after_merge} nulls after merge - filling with 0")
         merged = merged.fillna(0)
 
     print(f"\n{'=' * 60}")
@@ -523,29 +523,29 @@ def build_training_dataset(
     return merged
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # CLI ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 if __name__ == "__main__":
     print("╔══════════════════════════════════════════════════════════╗")
-    print("║        DATA LAYER — Phase 1: Core Engine                ║")
+    print("║        DATA LAYER - Phase 1: Core Engine                ║")
     print("╚══════════════════════════════════════════════════════════╝\n")
 
     dataset = build_training_dataset()
 
-    # ── Show sample output ──────────────────────────────────────────────
+    # -- Show sample output ----------------------------------------------
     print("Sample (first 5 rows, first 10 cols):")
     print(dataset.iloc[:5, :10].to_string(index=False))
 
-    # ── Save for downstream consumption ─────────────────────────────────
+    # -- Save for downstream consumption --------------------------------─
     output_path = os.path.join(DATA_DIR, "training_dataset.csv")
     dataset.to_csv(output_path, index=False)
-    print(f"\n✓ Saved training dataset to: {output_path}")
+    print(f"\n[OK] Saved training dataset to: {output_path}")
 
-    # ── Variance report (proof that augmentation prevents collapse) ─────
+    # -- Variance report (proof that augmentation prevents collapse) ----─
     numeric = dataset.select_dtypes(include=[np.number])
     zero_var_cols = numeric.columns[numeric.std() == 0].tolist()
     if zero_var_cols:
-        print(f"\n⚠ Zero-variance columns: {zero_var_cols}")
+        print(f"\n[WARNING] Zero-variance columns: {zero_var_cols}")
     else:
-        print(f"\n✓ No zero-variance columns — feature collapse prevented!")
+        print(f"\n[OK] No zero-variance columns - feature collapse prevented!")

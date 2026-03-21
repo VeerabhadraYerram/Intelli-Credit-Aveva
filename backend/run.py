@@ -28,7 +28,7 @@ def run_frontend():
 
 if __name__ == "__main__":
     print("=====================================================")
-    print("   Intelli-Credit-Aveva — Industrial AI Optimizer    ")
+    print("   Intelli-Credit-Aveva - Industrial AI Optimizer    ")
     print("             Phase 4: Full-Stack Start               ")
     print("=====================================================")
 

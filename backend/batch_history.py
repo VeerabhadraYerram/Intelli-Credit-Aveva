@@ -1,6 +1,6 @@
 """
 ==============================================================================
-BATCH HISTORY — Persistent Batch Performance Tracking
+BATCH HISTORY - Persistent Batch Performance Tracking
 ==============================================================================
 Stores all batch execution records in a JSON file for historical metric
 tracking, performance trend analysis, and continuous improvement evidence.

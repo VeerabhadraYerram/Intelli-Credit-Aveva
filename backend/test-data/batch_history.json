@@ -38,5 +38,285 @@
       "power_limit_kwh": 50.0
     },
     "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-6F97CF",
+    "timestamp": 1774029756.2861316,
+    "timestamp_iso": "2026-03-20T23:32:36",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 15.0,
+      "Drying_Temp": 80.0,
+      "Drying_Time": 40.0,
+      "Compression_Force": 25.0,
+      "Machine_Speed": 20.0,
+      "Lubricant_Conc": 2.0
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 160.16,
+      "Hardness": 4.7,
+      "Friability": 0.9128,
+      "Power_Consumption_kW": 18.18
+    },
+    "quality_delta": -7.190637,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-6F97CF",
+      "power_kw": 18.18,
+      "duration_hours": 1.5,
+      "energy_kwh": 27.27,
+      "emission_factor": 0.82,
+      "carbon_kg": 22.361,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 61.032,
+      "cumulative_energy_kwh": 74.43,
+      "exceeds_carbon_limit": false,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-3EFC25",
+    "timestamp": 1774029775.4087918,
+    "timestamp_iso": "2026-03-20T23:32:55",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 15.0,
+      "Drying_Temp": 80.0,
+      "Drying_Time": 40.0,
+      "Compression_Force": 25.0,
+      "Machine_Speed": 20.0,
+      "Lubricant_Conc": 2.0
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 166.61,
+      "Hardness": 5.15,
+      "Friability": 0.9879,
+      "Power_Consumption_kW": 19.28
+    },
+    "quality_delta": -7.358721,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-3EFC25",
+      "power_kw": 19.28,
+      "duration_hours": 1.5,
+      "energy_kwh": 28.92,
+      "emission_factor": 0.82,
+      "carbon_kg": 23.714,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 84.746,
+      "cumulative_energy_kwh": 103.35,
+      "exceeds_carbon_limit": false,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-1AB1B7",
+    "timestamp": 1774033456.0327027,
+    "timestamp_iso": "2026-03-21T00:34:16",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 80.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 5.0,
+      "Machine_Speed": 20.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 33.54,
+      "Hardness": 4.96,
+      "Friability": 0.975,
+      "Power_Consumption_kW": 9.44
+    },
+    "quality_delta": -7.266898,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-1AB1B7",
+      "power_kw": 9.44,
+      "duration_hours": 1.5,
+      "energy_kwh": 14.16,
+      "emission_factor": 0.82,
+      "carbon_kg": 11.611,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 11.611,
+      "cumulative_energy_kwh": 14.16,
+      "exceeds_carbon_limit": false,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-541E37",
+    "timestamp": 1774033627.5505471,
+    "timestamp_iso": "2026-03-21T00:37:07",
+    "proposed_settings": {
+      "Granulation_Time": 27.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 40.0,
+      "Drying_Time": 60.0,
+      "Compression_Force": 25.0,
+      "Machine_Speed": 20.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 167.68,
+      "Hardness": 4.96,
+      "Friability": 0.775,
+      "Power_Consumption_kW": 19.44
+    },
+    "quality_delta": -2.19435,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-541E37",
+      "power_kw": 19.44,
+      "duration_hours": 1.5,
+      "energy_kwh": 29.16,
+      "emission_factor": 0.82,
+      "carbon_kg": 23.911,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 23.911,
+      "cumulative_energy_kwh": 29.16,
+      "exceeds_carbon_limit": false,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-6BC3AA",
+    "timestamp": 1774033977.2139864,
+    "timestamp_iso": "2026-03-21T00:42:57",
+    "proposed_settings": {
+      "Granulation_Time": 27.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 80.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 25.0,
+      "Machine_Speed": 60.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 503.05,
+      "Hardness": 4.96,
+      "Friability": 0.975,
+      "Power_Consumption_kW": 31.44
+    },
+    "quality_delta": 5.180454,
+    "qdrant_updated": true,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-6BC3AA",
+      "power_kw": 31.44,
+      "duration_hours": 1.5,
+      "energy_kwh": 47.16,
+      "emission_factor": 0.82,
+      "carbon_kg": 38.671,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 38.671,
+      "cumulative_energy_kwh": 47.16,
+      "exceeds_carbon_limit": true,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-165AC4",
+    "timestamp": 1774059594.4201117,
+    "timestamp_iso": "2026-03-21T07:49:54",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 40.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 5.0,
+      "Machine_Speed": 80.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 134.15,
+      "Hardness": 4.96,
+      "Friability": 0.775,
+      "Power_Consumption_kW": 27.44
+    },
+    "quality_delta": -5.931016,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-165AC4",
+      "power_kw": 27.44,
+      "duration_hours": 1.5,
+      "energy_kwh": 41.16,
+      "emission_factor": 0.82,
+      "carbon_kg": 33.751,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 33.751,
+      "cumulative_energy_kwh": 41.16,
+      "exceeds_carbon_limit": true,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-22B05F",
+    "timestamp": 1774059917.479387,
+    "timestamp_iso": "2026-03-21T07:55:17",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 40.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 5.0,
+      "Machine_Speed": 80.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 128.13,
+      "Hardness": 4.7,
+      "Friability": 0.7128,
+      "Power_Consumption_kW": 26.18
+    },
+    "quality_delta": -5.92567,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-22B05F",
+      "power_kw": 26.18,
+      "duration_hours": 1.5,
+      "energy_kwh": 39.27,
+      "emission_factor": 0.82,
+      "carbon_kg": 32.201,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 65.952,
+      "cumulative_energy_kwh": 80.43,
+      "exceeds_carbon_limit": true,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
   }
 ]

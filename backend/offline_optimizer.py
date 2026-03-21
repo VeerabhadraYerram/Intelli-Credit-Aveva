@@ -1,9 +1,9 @@
 """
 ==============================================================================
-OFFLINE OPTIMIZER — Phase 1: The Core Engine
+OFFLINE OPTIMIZER - Phase 1: The Core Engine
 ==============================================================================
 Multi-output XGBoost surrogate model + NSGA-II genetic algorithm for offline
-Pareto optimization.  Generates "Golden Signatures" — Pareto-optimal machine
+Pareto optimization.  Generates "Golden Signatures" - Pareto-optimal machine
 settings for training the real-time Optimization Proxy.
 
 Author : Core Engine Team
@@ -29,9 +29,9 @@ from data_layer import build_training_dataset, DATA_DIR
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 
 # Decision variables the optimizer controls
 DECISION_VARS: List[str] = [
@@ -66,7 +66,7 @@ DECISION_BOUNDS: Dict[str, Tuple[float, float]] = {
 # Quality constraints for feasibility
 QUALITY_CONSTRAINTS: Dict[str, Tuple[float, float]] = {
     "Friability": (0.1, 1.0),   # must stay within acceptable pharma range
-    "Hardness":   (4.0, 10.0),  # kP — too soft or too hard is reject
+    "Hardness":   (4.0, 10.0),  # kP - too soft or too hard is reject
 }
 
 # NSGA-II hyperparameters
@@ -76,9 +76,9 @@ NSGA_CROSSOVER_RATE: float = 0.9
 NSGA_MUTATION_RATE: float = 0.1
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. SURROGATE MODEL — Multi-output XGBoost
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
+# 1. SURROGATE MODEL - Multi-output XGBoost
+# ----------------------------------------------------------------------------─
 class SurrogateModel:
     """Multi-output XGBoost regressor that maps machine settings + features
     to quality and energy targets.
@@ -104,12 +104,12 @@ class SurrogateModel:
         self.target_names: List[str] = TARGET_COLS
         self._is_fitted: bool = False
 
-        # ── Novelty Detection (Mahalanobis distance) ────────────────────
+        # -- Novelty Detection (Mahalanobis distance) --------------------
         self._train_centroid: Optional[np.ndarray] = None
         self._train_cov_inv: Optional[np.ndarray] = None
         self._novelty_threshold: float = 0.0  # 95th percentile of training distances
 
-        # ── Uncertainty Quantification (Quantile Regression) ────────────
+        # -- Uncertainty Quantification (Quantile Regression) ------------
         self._quantile_models: Dict[str, MultiOutputRegressor] = {}  # key = '10', '90'
         self._seed = seed
         self._n_estimators = n_estimators
@@ -130,7 +130,7 @@ class SurrogateModel:
             Self (for chaining).
         """
         # Identify available targets (Power_Consumption_kW may come from
-        # telemetry features with a phase prefix — use a mean aggregation)
+        # telemetry features with a phase prefix - use a mean aggregation)
         available_targets: List[str] = []
         y_cols: List[str] = []
 
@@ -146,7 +146,7 @@ class SurrogateModel:
                     df["Power_Consumption_kW"] = df[power_cols].mean(axis=1)
                     available_targets.append(t)
                     y_cols.append(t)
-                    print(f"  ℹ Synthesized 'Power_Consumption_kW' from "
+                    print(f"  [INFO] Synthesized 'Power_Consumption_kW' from "
                           f"{len(power_cols)} phase-level power features")
 
         self.target_names = available_targets
@@ -160,19 +160,19 @@ class SurrogateModel:
         X = df[self.feature_names].values
 
         print(f"[SURROGATE] Training on {X.shape[0]} samples, "
-              f"{X.shape[1]} features → {len(y_cols)} targets")
+              f"{X.shape[1]} features -> {len(y_cols)} targets")
 
         self.model.fit(X, y)
         self._is_fitted = True
 
-        # ── Novelty Detection: compute Mahalanobis centroid + covariance ──
+        # -- Novelty Detection: compute Mahalanobis centroid + covariance --
         self._train_centroid = X.mean(axis=0)
         try:
             cov = np.cov(X, rowvar=False)
             # Regularize covariance to avoid singularity
             cov += np.eye(cov.shape[0]) * 1e-6
             self._train_cov_inv = np.linalg.inv(cov)
-            # Compute distances for all training points → 95th percentile = threshold
+            # Compute distances for all training points -> 95th percentile = threshold
             train_distances = np.array([
                 mahalanobis(X[i], self._train_centroid, self._train_cov_inv)
                 for i in range(len(X))
@@ -180,11 +180,11 @@ class SurrogateModel:
             self._novelty_threshold = float(np.percentile(train_distances, 95))
             print(f"[NOVELTY] Mahalanobis threshold (95th pctl): {self._novelty_threshold:.2f}")
         except np.linalg.LinAlgError:
-            print("[NOVELTY] ⚠ Covariance matrix singular — novelty detection disabled")
+            print("[NOVELTY] [WARNING] Covariance matrix singular - novelty detection disabled")
             self._train_cov_inv = None
             self._novelty_threshold = 1e9  # effectively disabled
 
-        # ── Uncertainty: train quantile regression models (10th, 90th) ──
+        # -- Uncertainty: train quantile regression models (10th, 90th) --
         for q_label, q_val in [("10", 0.1), ("90", 0.9)]:
             try:
                 q_model = MultiOutputRegressor(
@@ -204,17 +204,17 @@ class SurrogateModel:
                 self._quantile_models[q_label] = q_model
                 print(f"[UNCERTAINTY] Trained quantile model (q={q_val})")
             except Exception as e:
-                print(f"[UNCERTAINTY] ⚠ Quantile model q={q_val} failed: {e}")
+                print(f"[UNCERTAINTY] [WARNING] Quantile model q={q_val} failed: {e}")
 
         # Cross-validation report
-        print(f"[SURROGATE] Cross-validation R² scores:")
+        print(f"[SURROGATE] Cross-validation R^2 scores:")
         for i, target in enumerate(y_cols):
             scores = cross_val_score(
                 XGBRegressor(n_estimators=300, max_depth=6, learning_rate=0.05,
                              subsample=0.8, random_state=42, verbosity=0),
                 X, y[:, i], cv=min(5, len(X)), scoring="r2"
             )
-            print(f"  {target:30s} → R² = {scores.mean():.4f} ± {scores.std():.4f}")
+            print(f"  {target:30s} -> R^2 = {scores.mean():.4f} +/- {scores.std():.4f}")
 
         return self
 
@@ -257,7 +257,7 @@ class SurrogateModel:
             lower = self._quantile_models["10"].predict(X)
             upper = self._quantile_models["90"].predict(X)
         else:
-            # Fallback: use ±10% of mean as approximate interval
+            # Fallback: use +/-10% of mean as approximate interval
             lower = mean_pred * 0.9
             upper = mean_pred * 1.1
 
@@ -299,8 +299,8 @@ class SurrogateModel:
         except Exception:
             dist = 1e9
         is_novel = dist > self._novelty_threshold
-        msg = ("⚠ LOW CONFIDENCE — outside known operating range"
-               if is_novel else "✓ Within known training distribution")
+        msg = ("[WARNING] LOW CONFIDENCE - outside known operating range"
+               if is_novel else "[OK] Within known training distribution")
         return {
             "distance": float(dist),
             "threshold": float(self._novelty_threshold),
@@ -352,7 +352,7 @@ class SurrogateModel:
         Returns
         -------
         Dict[str, float]
-            Feature name → importance score (normalized to sum to 1.0).
+            Feature name -> importance score (normalized to sum to 1.0).
         """
         if not self._is_fitted:
             return {}
@@ -384,9 +384,9 @@ class SurrogateModel:
         return sorted_imp
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 2. NSGA-II MULTI-OBJECTIVE OPTIMIZER
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 class NSGAII:
     """Custom NSGA-II implementation for offline Pareto optimization.
 
@@ -697,7 +697,7 @@ class NSGAII:
                     break
             pop = combined[new_pop]
 
-        # ── Extract final Pareto front ──────────────────────────────────
+        # -- Extract final Pareto front ----------------------------------
         final_obj, final_vio = self._evaluate(pop)
         final_fronts = self._fast_non_dominated_sort(final_obj, final_vio)
         pareto_indices = final_fronts[0]
@@ -719,15 +719,15 @@ class NSGAII:
             print(f"\n[NSGA-II] Final Pareto front: {len(pareto_decisions)} "
                   f"feasible solutions")
         else:
-            print(f"\n[NSGA-II] ⚠ No fully feasible solutions found, "
+            print(f"\n[NSGA-II] [WARNING] No fully feasible solutions found, "
                   f"returning {len(pareto_decisions)} best solutions")
 
         return pareto_decisions, pareto_objectives, pareto_predictions
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # 3. GOLDEN SIGNATURES GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 def generate_golden_signatures(
     training_df: Optional[pd.DataFrame] = None,
     n_contexts: int = 20,
@@ -756,11 +756,11 @@ def generate_golden_signatures(
     if training_df is None:
         training_df = build_training_dataset()
 
-    # ── Train surrogate ─────────────────────────────────────────────────
+    # -- Train surrogate ------------------------------------------------─
     surrogate = SurrogateModel(seed=seed)
     surrogate.fit(training_df)
 
-    # ── Sample contexts from training data ──────────────────────────────
+    # -- Sample contexts from training data ------------------------------
     rng = np.random.default_rng(seed)
     n_contexts = min(n_contexts, len(training_df))
     context_indices = rng.choice(len(training_df), size=n_contexts, replace=False)
@@ -812,12 +812,12 @@ def generate_golden_signatures(
     return golden_df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # CLI ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 if __name__ == "__main__":
     print("╔══════════════════════════════════════════════════════════╗")
-    print("║     OFFLINE OPTIMIZER — Phase 1: Core Engine            ║")
+    print("║     OFFLINE OPTIMIZER - Phase 1: Core Engine            ║")
     print("╚══════════════════════════════════════════════════════════╝\n")
 
     # Build training data
@@ -830,12 +830,12 @@ if __name__ == "__main__":
         seed=42,
     )
 
-    # ── Save Golden Signatures ──────────────────────────────────────────
+    # -- Save Golden Signatures ------------------------------------------
     output_path = os.path.join(DATA_DIR, "golden_signatures.csv")
     golden_sigs.to_csv(output_path, index=False)
-    print(f"\n✓ Saved {len(golden_sigs)} Golden Signatures to: {output_path}")
+    print(f"\n[OK] Saved {len(golden_sigs)} Golden Signatures to: {output_path}")
 
-    # ── Summary statistics ──────────────────────────────────────────────
+    # -- Summary statistics ----------------------------------------------
     print(f"\nGolden Signatures Summary:")
     print(f"  Shape: {golden_sigs.shape}")
     for var in DECISION_VARS:

@@ -1,6 +1,6 @@
 """
 ==============================================================================
-ENERGY ANALYZER — Power Consumption Pattern Analysis
+ENERGY ANALYZER - Power Consumption Pattern Analysis
 ==============================================================================
 Compares per-phase energy consumption patterns against golden signature
 baselines to detect anomalies, predict asset health issues, and provide
@@ -25,8 +25,8 @@ PHASES = [
 ENERGY_METRICS = ["Power_Consumption_kW", "Vibration_mm_s", "Temperature_C"]
 
 # Deviation thresholds
-THRESHOLD_WARNING = 0.15   # 15% deviation → WARNING
-THRESHOLD_CRITICAL = 0.30  # 30% deviation → CRITICAL
+THRESHOLD_WARNING = 0.15   # 15% deviation -> WARNING
+THRESHOLD_CRITICAL = 0.30  # 30% deviation -> CRITICAL
 
 # Phase-to-asset mapping for maintenance recommendations
 PHASE_ASSET_MAP = {
@@ -211,18 +211,18 @@ class EnergyPatternAnalyzer:
                 if "Power" in a["metric"] and a["direction"] == "higher":
                     recommendations.append(
                         f"URGENT: {phase} phase shows {abs(a['deviation_pct']):.0f}% "
-                        f"higher power consumption — inspect {a['asset']} for "
+                        f"higher power consumption - inspect {a['asset']} for "
                         f"degradation or calibration drift"
                     )
                 elif "Vibration" in a["metric"] and a["direction"] == "higher":
                     recommendations.append(
                         f"URGENT: {phase} phase vibration {abs(a['deviation_pct']):.0f}% "
-                        f"above normal — schedule predictive maintenance for {a['asset']}"
+                        f"above normal - schedule predictive maintenance for {a['asset']}"
                     )
                 elif "Thermal" in a["metric"]:
                     recommendations.append(
                         f"URGENT: {phase} thermal ramp rate deviated by "
-                        f"{abs(a['deviation_pct']):.0f}% — check heating element "
+                        f"{abs(a['deviation_pct']):.0f}% - check heating element "
                         f"efficiency in {a['asset']}"
                     )
 
@@ -233,7 +233,7 @@ class EnergyPatternAnalyzer:
                 recommendations.append(
                     f"MONITOR: {phase} phase {a['metric']} is "
                     f"{abs(a['deviation_pct']):.0f}% {a['direction']} than baseline "
-                    f"— track {a['asset']} over next 5 batches"
+                    f"- track {a['asset']} over next 5 batches"
                 )
 
         if not recommendations:

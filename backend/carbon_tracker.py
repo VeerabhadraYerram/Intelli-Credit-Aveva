@@ -1,6 +1,6 @@
 """
 ==============================================================================
-CARBON TRACKER — Real Carbon Emission Tracking
+CARBON TRACKER - Real Carbon Emission Tracking
 ==============================================================================
 Calculates per-batch and cumulative CO₂ emissions from power consumption data.
 Uses India grid emission factor as default.
@@ -13,9 +13,9 @@ Version: 2.0.0
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 # EMISSION FACTORS (kgCO₂ per kWh)
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------─
 EMISSION_FACTORS: Dict[str, float] = {
     "india_grid":       0.82,   # India weighted avg (CEA 2023)
     "eu_grid":          0.23,   # EU-27 average

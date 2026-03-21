@@ -37,15 +37,15 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, Field
 
-# ── LangGraph ───────────────────────────────────────────────────────────
+# -- LangGraph ----------------------------------------------------------─
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt, Command
 
-# ── LangSmith Observability ────────────────────────────────────────────
+# -- LangSmith Observability --------------------------------------------
 from langsmith import traceable
 
-# ── Qdrant Vector Database ─────────────────────────────────────────────
+# -- Qdrant Vector Database --------------------------------------------─
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -57,7 +57,7 @@ from qdrant_client.models import (
 # mathematical relationships in numerical telemetry data.
 # We use raw L2-normalized numerical vectors directly in Qdrant.
 
-# ── Phase 1 Imports ────────────────────────────────────────────────────
+# -- Phase 1 Imports ----------------------------------------------------
 from data_layer import build_training_dataset, DATA_DIR, SENSOR_COLS
 from offline_optimizer import DECISION_VARS, DECISION_BOUNDS, TARGET_COLS, SurrogateModel
 from model_layer import (
@@ -67,13 +67,13 @@ from model_layer import (
     DEVICE,
 )
 
-# ── Phase 2+ Imports: New Feature Modules ──────────────────────────────
+# -- Phase 2+ Imports: New Feature Modules ------------------------------
 from carbon_tracker import CarbonTracker, calculate_carbon
 from batch_history import BatchHistoryStore
 from energy_analyzer import EnergyPatternAnalyzer
 from decision_memory import DecisionMemory
 
-# ── PyTorch / sklearn ──────────────────────────────────────────────────
+# -- PyTorch / sklearn --------------------------------------------------
 import torch
 from sklearn.preprocessing import StandardScaler
 
@@ -132,7 +132,7 @@ class ManufacturingState(BaseModel):
     Every field tracks a dimension of the orchestration pipeline, from
     incoming telemetry through to execution outcome.
     """
-    # ── Identifiers ─────────────────────────────────────────────────
+    # -- Identifiers ------------------------------------------------─
     batch_id: str = Field(
         default="", description="Current batch being optimized"
     )
@@ -141,7 +141,7 @@ class ManufacturingState(BaseModel):
         description="Unique run identifier for tracing",
     )
 
-    # ── Node 1: Data Router outputs ─────────────────────────────────
+    # -- Node 1: Data Router outputs --------------------------------─
     current_telemetry: Dict[str, Any] = Field(
         default_factory=dict,
         description="Live / simulated telemetry readings",
@@ -155,7 +155,7 @@ class ManufacturingState(BaseModel):
         description="Cosine similarity of the retrieved baseline",
     )
 
-    # ── Node 2: Proxy Caller outputs ───────────────────────────────
+    # -- Node 2: Proxy Caller outputs ------------------------------─
     proposed_settings: Dict[str, Any] = Field(
         default_factory=dict,
         description="Optimal machine settings from PyTorch proxy + Repair",
@@ -165,7 +165,7 @@ class ManufacturingState(BaseModel):
         description="Pre-repair raw neural network outputs (for audit)",
     )
 
-    # ── HITL Gate ───────────────────────────────────────────────────
+    # -- HITL Gate --------------------------------------------------─
     human_approved: bool = Field(
         default=False,
         description="Whether a human operator approved the proposed settings",
@@ -175,7 +175,7 @@ class ManufacturingState(BaseModel):
         description="Optional textual feedback from human reviewer",
     )
 
-    # ── Node 3: Execution outputs ──────────────────────────────────
+    # -- Node 3: Execution outputs ----------------------------------
     execution_status: str = Field(
         default="pending",
         description="One of: pending | approved | rejected | executed | failed",
@@ -193,13 +193,13 @@ class ManufacturingState(BaseModel):
         description="Whether Qdrant was updated with a new golden signature",
     )
 
-    # ── NEW: Carbon Emissions ──────────────────────────────────────
+    # -- NEW: Carbon Emissions --------------------------------------
     carbon_metrics: Dict[str, Any] = Field(
         default_factory=dict,
         description="Per-batch carbon emission calculations",
     )
 
-    # ── NEW: Energy Pattern Analysis ───────────────────────────────
+    # -- NEW: Energy Pattern Analysis ------------------------------─
     energy_anomalies: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Detected energy consumption anomalies vs baseline",
@@ -213,13 +213,13 @@ class ManufacturingState(BaseModel):
         description="Maintenance recommendations from energy analysis",
     )
 
-    # ── NEW: Decision Memory ───────────────────────────────────────
+    # -- NEW: Decision Memory --------------------------------------─
     past_decision_warnings: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="Warnings about similar past HITL decisions",
     )
 
-    # ── NEW: Optimization Priorities ───────────────────────────────
+    # -- NEW: Optimization Priorities ------------------------------─
     optimization_priorities: Dict[str, Any] = Field(
         default_factory=lambda: {
             "objective_primary": "Tablet_Weight",
@@ -230,25 +230,25 @@ class ManufacturingState(BaseModel):
         description="User-configurable optimization objective priorities",
     )
 
-    # ── Phase 2: Qdrant Fallback ───────────────────────────────────
+    # -- Phase 2: Qdrant Fallback ----------------------------------─
     no_confident_match: bool = Field(
         default=False,
         description="True if Qdrant returned no confident match (score < 0.85)",
     )
 
-    # ── Phase 2: Novelty Detection ─────────────────────────────────
+    # -- Phase 2: Novelty Detection --------------------------------─
     novelty_warning: Dict[str, Any] = Field(
         default_factory=dict,
         description="Novelty detection result from Mahalanobis distance check",
     )
 
-    # ── Phase 2: Prediction Intervals ──────────────────────────────
+    # -- Phase 2: Prediction Intervals ------------------------------
     prediction_intervals: Dict[str, Any] = Field(
         default_factory=dict,
         description="Uncertainty quantification: lower/upper bounds per target",
     )
 
-    # ── Phase 2: Drift Detection ───────────────────────────────────
+    # -- Phase 2: Drift Detection ----------------------------------─
     retraining_alert: bool = Field(
         default=False,
         description="True if model drift detected (3+ consecutive OOB batches)",
@@ -325,14 +325,14 @@ class VectorMemory:
         int
             Number of points ingested.
         """
-        # ── Fit the StandardScaler on ALL context features ──────────
+        # -- Fit the StandardScaler on ALL context features ----------
         available_ctx = [c for c in self.context_cols if c in golden_df.columns]
         X_ctx = golden_df[available_ctx].fillna(0.0).values.astype(np.float64)
         self.scaler.fit(X_ctx)
         self._scaler_fitted = True
         log.info("  Qdrant scaler fitted on %d context features", len(available_ctx))
 
-        # ── Build points with raw numerical vectors ─────────────────
+        # -- Build points with raw numerical vectors ----------------─
         points: List[PointStruct] = []
         decision_cols = [c for c in DECISION_VARS if c in golden_df.columns]
         pred_cols = [c for c in golden_df.columns if c.startswith("pred_")]
@@ -493,7 +493,7 @@ class MCPToolExecutor:
             batch_id,
         )
 
-        # ── Validate all settings are within physical bounds ────────
+        # -- Validate all settings are within physical bounds --------
         for var, val in settings.items():
             if var in DECISION_BOUNDS:
                 lo, hi = DECISION_BOUNDS[var]
@@ -503,7 +503,7 @@ class MCPToolExecutor:
                         f"outside [{lo}, {hi}]"
                     )
 
-        # ── Simulate production outcome ─────────────────────────────
+        # -- Simulate production outcome ----------------------------─
         # Realistic simulation: higher compression + speed -> heavier tablets
         # Higher drying temp -> lower moisture -> higher friability
         base_weight = 200.0
@@ -619,7 +619,7 @@ class OpenlayerMonitor:
 # 5. GRAPH NODES
 # =====================================================================
 
-# ── Shared resources (initialized at graph build time) ──────────────
+# -- Shared resources (initialized at graph build time) --------------
 _vector_memory: Optional[VectorMemory] = None
 _mcp_executor: Optional[MCPToolExecutor] = None
 _openlayer: Optional[OpenlayerMonitor] = None
@@ -627,14 +627,14 @@ _proxy_model: Optional[OptimizationProxy] = None
 _input_scaler: Optional[StandardScaler] = None
 _output_scaler: Optional[StandardScaler] = None
 
-# ── NEW: Feature modules ────────────────────────────────────────────
+# -- NEW: Feature modules --------------------------------------------
 _carbon_tracker: Optional[CarbonTracker] = None
 _batch_history: Optional[BatchHistoryStore] = None
 _energy_analyzer: Optional[EnergyPatternAnalyzer] = None
 _decision_memory: Optional[DecisionMemory] = None
 _surrogate_model: Optional[SurrogateModel] = None
 
-# ── NEW: Global priorities (updated by frontend) ────────────────────
+# -- NEW: Global priorities (updated by frontend) --------------------
 _current_priorities: Dict[str, Any] = {
     "objective_primary": "Tablet_Weight",
     "objective_secondary": "Power_Consumption_kW",
@@ -642,10 +642,10 @@ _current_priorities: Dict[str, Any] = {
     "mode": "yield_vs_energy",
 }
 
-# ── Phase 2: Drift Detection counter ────────────────────────────────
+# -- Phase 2: Drift Detection counter --------------------------------
 _drift_counter: int = 0  # consecutive batches outside prediction interval
 
-# ── NEW: Regulatory targets ─────────────────────────────────────────
+# -- NEW: Regulatory targets ----------------------------------------─
 _regulatory_targets: Dict[str, Any] = {
     "max_carbon_per_batch_kg": 25.0,
     "max_power_per_batch_kwh": 50.0,
@@ -661,9 +661,9 @@ def _get_context_cols(golden_df: pd.DataFrame) -> List[str]:
     return [c for c in golden_df.columns if c.startswith("ctx_")]
 
 
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 # NODE 1: Data Router & Memory Retrieval
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 @traceable(name="data_router_node", run_type="chain")
 def data_router_node(state: ManufacturingState) -> dict:
     """Receive incoming telemetry and query Qdrant for the closest
@@ -695,24 +695,24 @@ def data_router_node(state: ManufacturingState) -> dict:
         baseline.get("source", "unknown"),
     )
 
-    # ── Phase 2: Qdrant Fallback (Feature 12) ─────────────────────
+    # -- Phase 2: Qdrant Fallback (Feature 12) --------------------─
     QDRANT_CONFIDENCE_THRESHOLD = 0.85
     no_confident_match = score < QDRANT_CONFIDENCE_THRESHOLD
     if no_confident_match:
-        log.warning("  ⚠ LOW QDRANT CONFIDENCE: score %.4f < %.2f threshold",
+        log.warning("  [WARNING] LOW QDRANT CONFIDENCE: score %.4f < %.2f threshold",
                     score, QDRANT_CONFIDENCE_THRESHOLD)
-        log.warning("  → No close historical scenario found — recommend manual review")
+        log.warning("  -> No close historical scenario found - recommend manual review")
     else:
-        log.info("  ✓ Qdrant match above confidence threshold")
+        log.info("  [OK] Qdrant match above confidence threshold")
 
-    # ── NEW: Energy Pattern Analysis ──────────────────────────────
+    # -- NEW: Energy Pattern Analysis ------------------------------
     energy_result = _energy_analyzer.analyze_patterns(
         state.current_telemetry, baseline
     )
     log.info("  Asset Health Score: %.1f%%", energy_result["asset_health_score"])
     log.info("  Energy Anomalies: %d detected", energy_result["anomaly_count"])
     for rec in energy_result["recommendations"]:
-        log.info("    → %s", rec)
+        log.info("    -> %s", rec)
 
     return _to_native({
         "historical_baseline": baseline,
@@ -724,9 +724,9 @@ def data_router_node(state: ManufacturingState) -> dict:
     })
 
 
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 # NODE 2: Proxy Caller (The Brain)
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 @traceable(name="proxy_caller_node", run_type="chain")
 def proxy_caller_node(state: ManufacturingState) -> dict:
     """Pass state context to the Phase 1 PyTorch Optimization Proxy
@@ -748,7 +748,7 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
     log.info("=" * 60)
     log.info("NODE 2: Proxy Caller (The Brain)")
 
-    # ── Build context feature vector from baseline ──────────────────
+    # -- Build context feature vector from baseline ------------------
     baseline = state.historical_baseline
     context_cols = [k for k in baseline.keys()
                     if k.startswith("ctx_") or k.startswith("pred_")]
@@ -771,7 +771,7 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
     elif context_values.shape[1] > proxy_input_dim:
         context_values = context_values[:, :proxy_input_dim]
 
-    # ── Scale and run proxy ─────────────────────────────────────────
+    # -- Scale and run proxy ----------------------------------------─
     start_ns = time.perf_counter_ns()
 
     X_scaled = _input_scaler.transform(context_values).astype(np.float32)
@@ -786,7 +786,7 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
 
     elapsed_ms = (time.perf_counter_ns() - start_ns) / 1_000_000
 
-    # ── Build output dicts ──────────────────────────────────────────
+    # -- Build output dicts ------------------------------------------
     raw_settings = {var: float(raw_np[0, i]) for i, var in enumerate(DECISION_VARS)}
     proposed = {var: float(repaired[0, i]) for i, var in enumerate(DECISION_VARS)}
 
@@ -799,7 +799,7 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
             var, proposed[var], lo, hi, status,
         )
 
-    # ── Openlayer monitoring ────────────────────────────────────────
+    # -- Openlayer monitoring ----------------------------------------
     _openlayer.log_proxy_output(raw_settings, proposed, state.batch_id)
 
     state_additions = {
@@ -807,13 +807,13 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
         "proposed_settings": proposed,
     }
 
-    # ── Feature 12: Qdrant Fallback ──────────────────────────────────
+    # -- Feature 12: Qdrant Fallback ----------------------------------
     no_confident_match = state.baseline_score < 0.85
     if no_confident_match:
-        log.warning("  ⚠️ Low Qdrant Match Score (%.4f) - Triggering Fallback Warning", state.baseline_score)
+        log.warning("  [WARNING]️ Low Qdrant Match Score (%.4f) - Triggering Fallback Warning", state.baseline_score)
     state_additions["no_confident_match"] = no_confident_match
 
-    # ── Feature 10: Novelty Detection from Surrogate ──────────────────
+    # -- Feature 10: Novelty Detection from Surrogate ------------------
     if _surrogate_model and _surrogate_model._is_fitted:
         try:
             # Build input feature vector matching surrogate's expected features
@@ -830,10 +830,10 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
             novelty_result = _surrogate_model.check_novelty(X_full)
             state_additions["novelty_warning"] = novelty_result
             if novelty_result.get("is_novel", False):
-                log.warning("  ⚠️ Novelty detected! Mahalanobis distance %.2f > threshold %.2f",
+                log.warning("  [WARNING]️ Novelty detected! Mahalanobis distance %.2f > threshold %.2f",
                             novelty_result["distance"], novelty_result["threshold"])
             else:
-                log.info("  ✓ Input within known training distribution (dist=%.2f)",
+                log.info("  [OK] Input within known training distribution (dist=%.2f)",
                          novelty_result.get("distance", 0))
         except Exception as e:
             log.error("  Novelty check failed: %s", e)
@@ -841,9 +841,9 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
     return _to_native(state_additions)
 
 
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 # HITL GATE: Human-in-the-Loop Interrupt
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 @traceable(name="hitl_gate_node", run_type="chain")
 def hitl_gate_node(state: ManufacturingState) -> dict:
     """Human-in-the-Loop approval gate.
@@ -867,14 +867,14 @@ def hitl_gate_node(state: ManufacturingState) -> dict:
     for var, val in state.proposed_settings.items():
         log.info("    %s = %.2f", var, val)
 
-    # ── NEW: Check decision memory for similar past decisions ──────
+    # -- NEW: Check decision memory for similar past decisions ------
     decision_warnings = _decision_memory.get_warnings(state.proposed_settings)
     if decision_warnings:
-        log.info("  ⚠️ Decision Memory warnings:")
+        log.info("  [WARNING]️ Decision Memory warnings:")
         for w in decision_warnings:
-            log.info("    → %s (Feedback: %s)", w["message"], w["feedback"])
+            log.info("    -> %s (Feedback: %s)", w["message"], w["feedback"])
 
-    # ── INTERRUPT: Pause graph execution here ───────────────────────
+    # -- INTERRUPT: Pause graph execution here ----------------------─
     human_decision = interrupt({
         "message": "Please review and approve the proposed machine settings.",
         "batch_id": state.batch_id,
@@ -887,7 +887,7 @@ def hitl_gate_node(state: ManufacturingState) -> dict:
         ),
     })
 
-    # ── Process the human's response ────────────────────────────────
+    # -- Process the human's response --------------------------------
     approved = human_decision.get("approved", False)
     feedback = human_decision.get("feedback", "")
 
@@ -916,9 +916,9 @@ def hitl_gate_node(state: ManufacturingState) -> dict:
         }
 
 
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 # NODE 3: Execution & Continuous Learning
-# ─────────────────────────────────────────────────────────────────────
+# --------------------------------------------------------------------─
 @traceable(name="execution_node", run_type="chain")
 def execution_node(state: ManufacturingState) -> dict:
     """Execute approved settings and feed outcomes back for continuous
@@ -949,7 +949,7 @@ def execution_node(state: ManufacturingState) -> dict:
             "quality_delta": 0.0,
         }
 
-    # ── Execute via MCP Tool ────────────────────────────────────────
+    # -- Execute via MCP Tool ----------------------------------------
     try:
         result = _mcp_executor.execute_machine_parameters(
             settings=state.proposed_settings,
@@ -965,7 +965,7 @@ def execution_node(state: ManufacturingState) -> dict:
             "quality_delta": 0.0,
         }
 
-    # ── Continuous Learning: Compare vs baseline ────────────────────
+    # -- Continuous Learning: Compare vs baseline --------------------
     baseline = state.historical_baseline
     baseline_weight = baseline.get("pred_Tablet_Weight", 200.0)
     baseline_power = baseline.get("pred_Power_Consumption_kW", 20.0)
@@ -994,7 +994,7 @@ def execution_node(state: ManufacturingState) -> dict:
     else:
         log.info("  No improvement over baseline. Qdrant NOT updated.")
 
-    # ── FEATURE 13: Drift Detection (uses predict_with_uncertainty) ──
+    # -- FEATURE 13: Drift Detection (uses predict_with_uncertainty) --
     global _drift_counter
     retraining_alert = False
     prediction_intervals = {}
@@ -1041,7 +1041,7 @@ def execution_node(state: ManufacturingState) -> dict:
                 log.warning("  Consecutive OOB batches: %d", _drift_counter)
             else:
                 _drift_counter = 0
-                log.info("  ✓ All outcomes within predicted intervals")
+                log.info("  [OK] All outcomes within predicted intervals")
 
             if _drift_counter >= 3:
                 retraining_alert = True
@@ -1050,7 +1050,7 @@ def execution_node(state: ManufacturingState) -> dict:
         except Exception as e:
             log.error("  Drift detection failed: %s", e)
 
-    # ── NEW: Carbon Emission Tracking ─────────────────────────────
+    # -- NEW: Carbon Emission Tracking ----------------------------─
     power_kw = outcome.get("Power_Consumption_kW", 20.0)
     carbon_result = _carbon_tracker.track_batch(
         batch_id=state.batch_id,
@@ -1059,7 +1059,7 @@ def execution_node(state: ManufacturingState) -> dict:
     log.info("  Carbon: %.3f kgCO₂ (cumulative: %.3f kgCO₂)",
              carbon_result["carbon_kg"], carbon_result["cumulative_carbon_kg"])
 
-    # ── NEW: Log decision to decision memory ─────────────────────
+    # -- NEW: Log decision to decision memory --------------------─
     _decision_memory.log_decision(
         batch_id=state.batch_id,
         proposed_settings=state.proposed_settings,
@@ -1068,7 +1068,7 @@ def execution_node(state: ManufacturingState) -> dict:
         quality_delta=float(quality_delta),
     )
 
-    # ── NEW: Add to batch history ─────────────────────────────────
+    # -- NEW: Add to batch history --------------------------------─
     _batch_history.add_batch(
         batch_id=state.batch_id,
         proposed_settings=state.proposed_settings,
@@ -1117,13 +1117,13 @@ def build_orchestration_graph() -> StateGraph:
     """
     graph = StateGraph(ManufacturingState)
 
-    # ── Add nodes ───────────────────────────────────────────────────
+    # -- Add nodes --------------------------------------------------─
     graph.add_node("data_router", data_router_node)
     graph.add_node("proxy_caller", proxy_caller_node)
     graph.add_node("hitl_gate", hitl_gate_node)
     graph.add_node("execution_node", execution_node)
 
-    # ── Add edges ───────────────────────────────────────────────────
+    # -- Add edges --------------------------------------------------─
     graph.add_edge(START, "data_router")
     graph.add_edge("data_router", "proxy_caller")
     graph.add_edge("proxy_caller", "hitl_gate")
@@ -1168,13 +1168,13 @@ def initialize_system(
     if golden_signatures_path is None:
         golden_signatures_path = os.path.join(DATA_DIR, "golden_signatures.csv")
 
-    # ── Load Golden Signatures ──────────────────────────────────────
+    # -- Load Golden Signatures --------------------------------------
     log.info("Loading Golden Signatures from: %s", golden_signatures_path)
     golden_df = pd.read_csv(golden_signatures_path)
     golden_df = golden_df.head(max_signatures)  # limit for demo speed
     log.info("  Loaded %d signatures", len(golden_df))
 
-    # ── Train PyTorch Proxy ─────────────────────────────────────────
+    # -- Train PyTorch Proxy ----------------------------------------─
     context_cols = [c for c in golden_df.columns if c.startswith("ctx_")]
     decision_cols = [c for c in DECISION_VARS if c in golden_df.columns]
 
@@ -1213,21 +1213,21 @@ def initialize_system(
 
     log.info("  Proxy training complete")
 
-    # ── Initialize Qdrant with same context columns ─────────────────
+    # -- Initialize Qdrant with same context columns ----------------─
     _vector_memory = VectorMemory(context_cols=context_cols)
     _vector_memory.ingest_golden_signatures(golden_df)
 
-    # ── Initialize MCP executor & Openlayer ─────────────────────────
+    # -- Initialize MCP executor & Openlayer ------------------------─
     _mcp_executor = MCPToolExecutor()
     _openlayer = OpenlayerMonitor()
 
-    # ── NEW: Initialize feature modules ─────────────────────────────
+    # -- NEW: Initialize feature modules ----------------------------─
     _carbon_tracker = CarbonTracker()
     _batch_history = BatchHistoryStore()
     _energy_analyzer = EnergyPatternAnalyzer()
     _decision_memory = DecisionMemory()
 
-    # ── NEW: Train surrogate and keep reference for feature importances
+    # -- NEW: Train surrogate and keep reference for feature importances
     _surrogate_model = SurrogateModel()
     try:
         from data_layer import build_training_dataset
@@ -1251,16 +1251,16 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # ── Initialize all subsystems ───────────────────────────────────
+    # -- Initialize all subsystems ----------------------------------─
     initialize_system(max_signatures=100)
 
-    # ── Build the LangGraph ─────────────────────────────────────────
+    # -- Build the LangGraph ----------------------------------------─
     compiled_graph, checkpointer = compile_graph()
     print("\nGraph compiled successfully!")
     print(f"  Nodes: data_router -> proxy_caller -> hitl_gate -> execution_node")
     print(f"  HITL interrupt at: hitl_gate (uses interrupt() + Command resume)")
 
-    # ── Simulate incoming telemetry ─────────────────────────────────
+    # -- Simulate incoming telemetry --------------------------------─
     # Use ACTUAL context column names from Golden Signatures so the
     # raw numerical vector query matches the Qdrant collection schema.
     golden_for_sim = pd.read_csv(
@@ -1281,7 +1281,7 @@ if __name__ == "__main__":
 
     thread_config = {"configurable": {"thread_id": "demo-thread-001"}}
 
-    # ── Run graph (will pause at HITL gate) ─────────────────────────
+    # -- Run graph (will pause at HITL gate) ------------------------─
     print("\n" + "-" * 60)
     print("Running graph... (will pause at HITL gate)")
     print("-" * 60)
@@ -1292,7 +1292,7 @@ if __name__ == "__main__":
     ):
         result = event
 
-    # ── Check if interrupted ────────────────────────────────────────
+    # -- Check if interrupted ----------------------------------------
     snapshot = compiled_graph.get_state(thread_config)
 
     if snapshot.next:
@@ -1306,7 +1306,7 @@ if __name__ == "__main__":
         print("  Simulating APPROVAL for demo...")
         print("=" * 60)
 
-        # ── Resume with simulated human approval ────────────────────
+        # -- Resume with simulated human approval --------------------
         for event in compiled_graph.stream(
             Command(resume={"approved": True, "feedback": "Looks good!"}),
             thread_config,
@@ -1314,7 +1314,7 @@ if __name__ == "__main__":
         ):
             result = event
 
-    # ── Final state ─────────────────────────────────────────────────
+    # -- Final state ------------------------------------------------─
     if result:
         print("\n" + "=" * 60)
         print("FINAL ORCHESTRATION STATE")

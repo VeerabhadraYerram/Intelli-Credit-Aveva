@@ -65,7 +65,12 @@ export default function Execution() {
   const warnings = gameState?.past_decision_warnings || [];
   const carbonMetrics = gameState?.carbon_metrics || {};
   const noConfidentMatch = gameState?.no_confident_match;
-  const noveltyWarning = gameState?.novelty_warning || {};
+  // Use Qdrant baseline_score for novelty - the Mahalanobis distance is broken
+  // due to feature space mismatch between surrogate model and orchestration pipeline
+  const baselineScore = gameState?.baseline_score || 0;
+  const noveltyWarning = baselineScore > 0 && baselineScore < 0.85 
+    ? { is_novel: true, confidence_msg: `Low Qdrant match (${(baselineScore*100).toFixed(1)}%). Input may be outside known operating range.` }
+    : { is_novel: false };
   const retrainingAlert = gameState?.retraining_alert;
   const predictionIntervals = gameState?.prediction_intervals || {};
 
@@ -146,12 +151,12 @@ export default function Execution() {
               }}>
                 <Warning style={{ color: '#dc3545', fontSize: '1.25rem', flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#333' }}>Surrogate Model Novelty Detection</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#333' }}>Low Confidence Match</div>
                   <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
-                    {noveltyWarning.confidence_msg || 'Input is outside the known training distribution.'}
+                    {noveltyWarning.confidence_msg || 'Input may be outside the known operating range.'}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' }}>
-                    Mahalanobis Distance: {(noveltyWarning.distance || 0).toFixed(2)} (threshold: {(noveltyWarning.threshold || 0).toFixed(2)})
+                    Qdrant Match Score: {(baselineScore * 100).toFixed(1)}% (threshold: 85%)
                   </div>
                 </div>
               </div>

@@ -185,10 +185,19 @@ async def new_batch(background_tasks: BackgroundTasks):
         
         # Build telemetry with the CORRECT ctx_ column names + slight noise
         mock_telemetry = {}
+        # 1 in 5 chance of simulating a "drifting" or unusual batch
+        is_anomalous = rng.random() > 0.8
+        
         for col in ctx_cols:
             base_val = float(row[col]) if pd.notna(row[col]) else 0.0
-            # Add 3-8% random perturbation to simulate real variation
-            noise = rng.normal(0, 0.05) * abs(base_val) if abs(base_val) > 1e-6 else rng.normal(0, 0.01)
+            
+            if is_anomalous and rng.random() > 0.7:
+                # Add large 30-60% noise to random features to break similarity
+                noise = (rng.random() * 0.3 + 0.3) * base_val * rng.choice([-1, 1])
+            else:
+                # Standard small 3-8% noise
+                noise = rng.normal(0, 0.05) * abs(base_val) if abs(base_val) > 1e-6 else rng.normal(0, 0.01)
+                
             mock_telemetry[col] = round(base_val + noise, 4)
         
         # Also include human-readable sensor values for the Dashboard UI
@@ -202,7 +211,7 @@ async def new_batch(background_tasks: BackgroundTasks):
         mock_telemetry["Vibration_mm_s"] = mock_telemetry.get("ctx_Compression_Vibration_mm_s_mean", round(random.uniform(2, 8), 2))
         
     except Exception as e:
-        print(f"⚠ Could not load golden signatures for telemetry: {e}")
+        print(f"[WARNING] Could not load golden signatures for telemetry: {e}")
         # Fallback to basic random telemetry
         mock_telemetry = {
             "Temperature_C": round(random.uniform(60, 95), 1),

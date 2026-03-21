@@ -1,5 +1,5 @@
 """
-test_all_features.py — Smoke test for all new hackathon endpoints.
+test_all_features.py - Smoke test for all new hackathon endpoints.
 
 Requires: Backend running on http://127.0.0.1:8000
 Run with: python -X utf8 test_all_features.py
@@ -31,11 +31,11 @@ def test(name, method, url, json_body=None, expect_key=None):
             PASS += 1
         else:
             FAIL += 1
-        print(f"  {status} — {name}")
+        print(f"  {status} - {name}")
         return data
     except Exception as e:
         FAIL += 1
-        print(f"  ❌ FAIL — {name}: {e}")
+        print(f"  ❌ FAIL - {name}: {e}")
         return None
 
 print("=" * 60)
@@ -94,10 +94,10 @@ if result and "batch_id" in result:
         for field in new_fields:
             if field in state:
                 PASS += 1
-                print(f"  ✅ PASS — State contains '{field}'")
+                print(f"  ✅ PASS - State contains '{field}'")
             else:
                 FAIL += 1
-                print(f"  ❌ FAIL — State missing '{field}'")
+                print(f"  ❌ FAIL - State missing '{field}'")
         
         # Approve and execute
         test("POST /api/execute_decision (approve)", "POST", f"{BASE}/api/execute_decision",
@@ -110,10 +110,10 @@ if result and "batch_id" in result:
         if final:
             if final.get("carbon_metrics"):
                 PASS += 1
-                print(f"  ✅ PASS — Carbon metrics present in final state")
+                print(f"  ✅ PASS - Carbon metrics present in final state")
             else:
                 FAIL += 1
-                print(f"  ❌ FAIL — Carbon metrics missing in final state")
+                print(f"  ❌ FAIL - Carbon metrics missing in final state")
 
 # Summary
 print("\n" + "=" * 60)

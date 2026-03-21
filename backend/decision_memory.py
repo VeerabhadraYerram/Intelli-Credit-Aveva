@@ -1,6 +1,6 @@
 """
 ==============================================================================
-DECISION MEMORY — Operator Decision Persistence & Reuse
+DECISION MEMORY - Operator Decision Persistence & Reuse
 ==============================================================================
 Stores all HITL decisions (approve/reject + feedback) and finds similar past
 decisions to warn operators about previously rejected settings.
