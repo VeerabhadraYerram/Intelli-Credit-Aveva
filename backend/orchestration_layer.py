@@ -72,6 +72,7 @@ from carbon_tracker import CarbonTracker, calculate_carbon
 from batch_history import BatchHistoryStore
 from energy_analyzer import EnergyPatternAnalyzer
 from decision_memory import DecisionMemory
+from audit_ledger import AuditLedger
 
 # -- PyTorch / sklearn --------------------------------------------------
 import torch
@@ -633,6 +634,7 @@ _batch_history: Optional[BatchHistoryStore] = None
 _energy_analyzer: Optional[EnergyPatternAnalyzer] = None
 _decision_memory: Optional[DecisionMemory] = None
 _surrogate_model: Optional[SurrogateModel] = None
+_audit_ledger: Optional[AuditLedger] = None
 
 # -- NEW: Global priorities (updated by frontend) --------------------
 _current_priorities: Dict[str, Any] = {
@@ -1079,6 +1081,18 @@ def execution_node(state: ManufacturingState) -> dict:
         energy_anomalies=state.energy_anomalies,
     )
 
+    # -- Audit Ledger: hash-chained immutable log -------------------
+    _audit_ledger.log_decision(
+        batch_id=state.batch_id,
+        ai_suggestion=state.proposed_settings,
+        human_decision="approved",
+        human_feedback=state.human_feedback,
+        carbon_metrics=carbon_result,
+        quality_delta=float(quality_delta),
+        qdrant_updated=qdrant_updated,
+    )
+    log.info("  Audit ledger updated (hash-chained)")
+
     return _to_native({
         "execution_status": exec_status,
         "simulated_outcome": outcome,
@@ -1161,7 +1175,7 @@ def initialize_system(
     global _vector_memory, _mcp_executor, _openlayer
     global _proxy_model, _input_scaler, _output_scaler
     global _carbon_tracker, _batch_history, _energy_analyzer
-    global _decision_memory, _surrogate_model
+    global _decision_memory, _surrogate_model, _audit_ledger
 
     if golden_signatures_path is None:
         golden_signatures_path = os.path.join(DATA_DIR, "golden_signatures.csv")
@@ -1224,6 +1238,7 @@ def initialize_system(
     _batch_history = BatchHistoryStore()
     _energy_analyzer = EnergyPatternAnalyzer()
     _decision_memory = DecisionMemory()
+    _audit_ledger = AuditLedger()
 
     # -- NEW: Train surrogate and keep reference for feature importances
     _surrogate_model = SurrogateModel()

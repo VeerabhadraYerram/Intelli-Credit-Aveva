@@ -270,13 +270,6 @@ async def get_batch_history():
     }
 
 
-@app.get("/api/batch_summary")
-async def get_batch_summary():
-    """Get aggregate batch statistics."""
-    from orchestration_layer import _batch_history
-    if _batch_history is None:
-        return {}
-    return _batch_history.get_summary_stats()
 
 
 @app.get("/api/feature_importance")

@@ -5,6 +5,7 @@ export default function Execution() {
   const [gameState, setGameState] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [decisionHistory, setDecisionHistory] = useState([]);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -53,7 +54,8 @@ export default function Execution() {
         })
       });
     } catch (err) {
-      alert("Failed to submit decision: " + err.message);
+      setSubmitError('Failed to submit decision: ' + err.message);
+      setTimeout(() => setSubmitError(''), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -83,6 +85,12 @@ export default function Execution() {
           <p style={{ color: '#666', marginTop: '0.5rem' }}>Human-in-the-Loop Gateway</p>
         </div>
       </div>
+
+      {submitError && (
+        <div style={{ color: '#d32f2f', padding: '1rem', backgroundColor: '#ffebee', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 600 }}>
+          {submitError}
+        </div>
+      )}
 
       <div style={{ backgroundColor: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '2.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
         

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Dashboard, Tune, BarChart, Speed, Settings, History, Assessment } from '@mui/icons-material';
+import { Dashboard, Tune, BarChart, Speed, Settings, History } from '@mui/icons-material';
 
 const navItems = [
   { to: '/', icon: Dashboard, label: 'Dashboard', end: true },
@@ -8,7 +8,6 @@ const navItems = [
   { to: '/explainability', icon: BarChart, label: 'Analytics' },
   { to: '/execution', icon: Speed, label: 'Execution' },
   { to: '/history', icon: History, label: 'History' },
-  { to: '/gap-analysis', icon: Assessment, label: 'Gap Analysis' },
 ];
 
 const navStyle = (isActive) => ({
