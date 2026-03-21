@@ -835,8 +835,27 @@ def proxy_caller_node(state: ManufacturingState) -> dict:
             else:
                 log.info("  [OK] Input within known training distribution (dist=%.2f)",
                          novelty_result.get("distance", 0))
+            
+            # --- Generate UI Predictions ---
+            uq_result = _surrogate_model.predict_with_uncertainty(X_full)
+            lower = uq_result["lower"][0]
+            upper = uq_result["upper"][0]
+            mean = uq_result["mean"][0]
+
+            # Build human-readable prediction intervals for the frontend
+            prediction_intervals = {}
+            for i, target in enumerate(_surrogate_model.target_names):
+                prediction_intervals[target] = {
+                    "predicted": float(mean[i]),
+                    "lower_10": float(lower[i]),
+                    "upper_90": float(upper[i]),
+                    "band_width": float(upper[i] - lower[i]),
+                }
+            state_additions["prediction_intervals"] = prediction_intervals
+            log.info("  [OK] Generated uncertainty-aware prediction intervals")
+
         except Exception as e:
-            log.error("  Novelty check failed: %s", e)
+            log.error("  Prediction/Novelty failed: %s", e)
 
     return _to_native(state_additions)
 
@@ -997,33 +1016,12 @@ def execution_node(state: ManufacturingState) -> dict:
     # -- FEATURE 13: Drift Detection (uses predict_with_uncertainty) --
     global _drift_counter
     retraining_alert = False
-    prediction_intervals = {}
-    if _surrogate_model and _surrogate_model._is_fitted:
+    
+    # Read prediction intervals that were already calculated in proxy_caller_node
+    prediction_intervals = state.prediction_intervals or {}
+    
+    if _surrogate_model and _surrogate_model._is_fitted and prediction_intervals:
         try:
-            # Build input feature vector matching surrogate's feature_names
-            feat_vals = []
-            for fname in _surrogate_model.feature_names:
-                if fname in state.proposed_settings:
-                    feat_vals.append(float(state.proposed_settings[fname]))
-                elif fname in state.current_telemetry:
-                    feat_vals.append(float(state.current_telemetry[fname]))
-                else:
-                    feat_vals.append(0.0)
-            X_full = np.array([feat_vals], dtype=np.float64)
-
-            uq_result = _surrogate_model.predict_with_uncertainty(X_full)
-            lower = uq_result["lower"][0]
-            upper = uq_result["upper"][0]
-            mean = uq_result["mean"][0]
-
-            # Build human-readable prediction intervals
-            for i, target in enumerate(_surrogate_model.target_names):
-                prediction_intervals[target] = {
-                    "predicted": float(mean[i]),
-                    "lower_10": float(lower[i]),
-                    "upper_90": float(upper[i]),
-                    "band_width": float(upper[i] - lower[i]),
-                }
 
             # Check if actual outcomes are within predicted intervals
             out_of_bounds = False

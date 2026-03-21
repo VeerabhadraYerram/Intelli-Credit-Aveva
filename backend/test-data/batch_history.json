@@ -318,5 +318,45 @@
       "power_limit_kwh": 50.0
     },
     "energy_anomalies": []
+  },
+  {
+    "batch_id": "BATCH-4038ED",
+    "timestamp": 1774060406.4470556,
+    "timestamp_iso": "2026-03-21T08:03:26",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 40.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 5.0,
+      "Machine_Speed": 80.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "simulated_outcome": {
+      "Tablet_Weight": 133.29,
+      "Hardness": 5.15,
+      "Friability": 0.7879,
+      "Power_Consumption_kW": 27.28
+    },
+    "quality_delta": -5.933867,
+    "qdrant_updated": false,
+    "human_approved": true,
+    "human_feedback": "Approved by operator",
+    "carbon_metrics": {
+      "batch_id": "BATCH-4038ED",
+      "power_kw": 27.28,
+      "duration_hours": 1.5,
+      "energy_kwh": 40.92,
+      "emission_factor": 0.82,
+      "carbon_kg": 33.554,
+      "carbon_intensity": 0.82,
+      "cumulative_carbon_kg": 99.506,
+      "cumulative_energy_kwh": 121.35,
+      "exceeds_carbon_limit": true,
+      "exceeds_power_limit": false,
+      "carbon_limit_kg": 25.0,
+      "power_limit_kwh": 50.0
+    },
+    "energy_anomalies": []
   }
 ]

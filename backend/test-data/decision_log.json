@@ -134,5 +134,22 @@
     "approved": true,
     "feedback": "Approved by operator",
     "quality_delta": -5.92567
+  },
+  {
+    "batch_id": "BATCH-4038ED",
+    "timestamp": 1774060406.445567,
+    "timestamp_iso": "2026-03-21T08:03:26",
+    "proposed_settings": {
+      "Granulation_Time": 9.0,
+      "Binder_Amount": 5.0,
+      "Drying_Temp": 40.0,
+      "Drying_Time": 20.0,
+      "Compression_Force": 5.0,
+      "Machine_Speed": 80.0,
+      "Lubricant_Conc": 0.30000001192092896
+    },
+    "approved": true,
+    "feedback": "Approved by operator",
+    "quality_delta": -5.933867
   }
 ]

@@ -185,18 +185,19 @@ async def new_batch(background_tasks: BackgroundTasks):
         
         # Build telemetry with the CORRECT ctx_ column names + slight noise
         mock_telemetry = {}
-        # 1 in 5 chance of simulating a "drifting" or unusual batch
-        is_anomalous = rng.random() > 0.8
+        # 1 in 3 chance of simulating a "drifting" batch to show off Novelty Warning
+        is_anomalous = rng.random() > 0.65
         
         for col in ctx_cols:
             base_val = float(row[col]) if pd.notna(row[col]) else 0.0
             
-            if is_anomalous and rng.random() > 0.7:
-                # Add large 30-60% noise to random features to break similarity
-                noise = (rng.random() * 0.3 + 0.3) * base_val * rng.choice([-1, 1])
+            if is_anomalous and rng.random() > 0.5:
+                # To break Cosine Similarity across 284 dims, we must significantly
+                # alter the vector's direction by zeroing out or flipping signs of many features
+                noise = -base_val * rng.uniform(0.5, 1.5)
             else:
-                # Standard small 3-8% noise
-                noise = rng.normal(0, 0.05) * abs(base_val) if abs(base_val) > 1e-6 else rng.normal(0, 0.01)
+                # Standard small 1-3% noise
+                noise = rng.normal(0, 0.02) * abs(base_val) if abs(base_val) > 1e-6 else rng.normal(0, 0.01)
                 
             mock_telemetry[col] = round(base_val + noise, 4)
         
