@@ -8,7 +8,6 @@
 ## 🏗️ Architecture
 
 ![Intelli-Credit-Aveva Architecture V2.0](./architecture.jpeg)
-*(Note: Please ensure the architecture diagram is named `architecture.jpeg` and placed in the root directory).*
 
 ---
 
